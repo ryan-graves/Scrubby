@@ -24,9 +24,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		38D9FE732D6269A000E651FA /* Scrubby.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Scrubby.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		38D9FE842D6269A100E651FA /* ScrubbyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ScrubbyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		38D9FE8E2D6269A100E651FA /* ScrubbyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ScrubbyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		38D9FE732D6269A000E651FA /* FileScrubby.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FileScrubby.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		38D9FE842D6269A100E651FA /* FileScrubbyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FileScrubbyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		38D9FE8E2D6269A100E651FA /* FileScrubbyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FileScrubbyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -85,9 +85,9 @@
 		38D9FE742D6269A000E651FA /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				38D9FE732D6269A000E651FA /* Scrubby.app */,
-				38D9FE842D6269A100E651FA /* ScrubbyTests.xctest */,
-				38D9FE8E2D6269A100E651FA /* ScrubbyUITests.xctest */,
+				38D9FE732D6269A000E651FA /* FileScrubby.app */,
+				38D9FE842D6269A100E651FA /* FileScrubbyTests.xctest */,
+				38D9FE8E2D6269A100E651FA /* FileScrubbyUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,9 +95,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		38D9FE722D6269A000E651FA /* Scrubby */ = {
+		38D9FE722D6269A000E651FA /* FileScrubby */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 38D9FE982D6269A100E651FA /* Build configuration list for PBXNativeTarget "Scrubby" */;
+			buildConfigurationList = 38D9FE982D6269A100E651FA /* Build configuration list for PBXNativeTarget "FileScrubby" */;
 			buildPhases = (
 				38D9FE6F2D6269A000E651FA /* Sources */,
 				38D9FE702D6269A000E651FA /* Frameworks */,
@@ -110,16 +110,16 @@
 			fileSystemSynchronizedGroups = (
 				38D9FE752D6269A000E651FA /* Scrubby */,
 			);
-			name = Scrubby;
+			name = FileScrubby;
 			packageProductDependencies = (
 			);
 			productName = Scrubby;
-			productReference = 38D9FE732D6269A000E651FA /* Scrubby.app */;
+			productReference = 38D9FE732D6269A000E651FA /* FileScrubby.app */;
 			productType = "com.apple.product-type.application";
 		};
-		38D9FE832D6269A100E651FA /* ScrubbyTests */ = {
+		38D9FE832D6269A100E651FA /* FileScrubbyTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 38D9FE9B2D6269A100E651FA /* Build configuration list for PBXNativeTarget "ScrubbyTests" */;
+			buildConfigurationList = 38D9FE9B2D6269A100E651FA /* Build configuration list for PBXNativeTarget "FileScrubbyTests" */;
 			buildPhases = (
 				38D9FE802D6269A100E651FA /* Sources */,
 				38D9FE812D6269A100E651FA /* Frameworks */,
@@ -133,16 +133,16 @@
 			fileSystemSynchronizedGroups = (
 				38D9FE872D6269A100E651FA /* ScrubbyTests */,
 			);
-			name = ScrubbyTests;
+			name = FileScrubbyTests;
 			packageProductDependencies = (
 			);
 			productName = ScrubbyTests;
-			productReference = 38D9FE842D6269A100E651FA /* ScrubbyTests.xctest */;
+			productReference = 38D9FE842D6269A100E651FA /* FileScrubbyTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		38D9FE8D2D6269A100E651FA /* ScrubbyUITests */ = {
+		38D9FE8D2D6269A100E651FA /* FileScrubbyUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 38D9FE9E2D6269A100E651FA /* Build configuration list for PBXNativeTarget "ScrubbyUITests" */;
+			buildConfigurationList = 38D9FE9E2D6269A100E651FA /* Build configuration list for PBXNativeTarget "FileScrubbyUITests" */;
 			buildPhases = (
 				38D9FE8A2D6269A100E651FA /* Sources */,
 				38D9FE8B2D6269A100E651FA /* Frameworks */,
@@ -156,11 +156,11 @@
 			fileSystemSynchronizedGroups = (
 				38D9FE912D6269A100E651FA /* ScrubbyUITests */,
 			);
-			name = ScrubbyUITests;
+			name = FileScrubbyUITests;
 			packageProductDependencies = (
 			);
 			productName = ScrubbyUITests;
-			productReference = 38D9FE8E2D6269A100E651FA /* ScrubbyUITests.xctest */;
+			productReference = 38D9FE8E2D6269A100E651FA /* FileScrubbyUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -186,7 +186,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 38D9FE6E2D6269A000E651FA /* Build configuration list for PBXProject "Scrubby" */;
+			buildConfigurationList = 38D9FE6E2D6269A000E651FA /* Build configuration list for PBXProject "FileScrubby" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -200,9 +200,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				38D9FE722D6269A000E651FA /* Scrubby */,
-				38D9FE832D6269A100E651FA /* ScrubbyTests */,
-				38D9FE8D2D6269A100E651FA /* ScrubbyUITests */,
+				38D9FE722D6269A000E651FA /* FileScrubby */,
+				38D9FE832D6269A100E651FA /* FileScrubbyTests */,
+				38D9FE8D2D6269A100E651FA /* FileScrubbyUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -258,12 +258,12 @@
 /* Begin PBXTargetDependency section */
 		38D9FE862D6269A100E651FA /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 38D9FE722D6269A000E651FA /* Scrubby */;
+			target = 38D9FE722D6269A000E651FA /* FileScrubby */;
 			targetProxy = 38D9FE852D6269A100E651FA /* PBXContainerItemProxy */;
 		};
 		38D9FE902D6269A100E651FA /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 38D9FE722D6269A000E651FA /* Scrubby */;
+			target = 38D9FE722D6269A000E651FA /* FileScrubby */;
 			targetProxy = 38D9FE8F2D6269A100E651FA /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -393,6 +393,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Scrubby/Scrubby.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -401,6 +402,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = FileScrubby;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -420,6 +423,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Scrubby/Scrubby.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -428,6 +432,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = FileScrubby;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -455,7 +461,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Scrubby.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Scrubby";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FileScrubby.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FileScrubby";
 			};
 			name = Debug;
 		};
@@ -473,7 +479,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Scrubby.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Scrubby";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FileScrubby.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FileScrubby";
 			};
 			name = Release;
 		};
@@ -512,7 +518,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		38D9FE6E2D6269A000E651FA /* Build configuration list for PBXProject "Scrubby" */ = {
+		38D9FE6E2D6269A000E651FA /* Build configuration list for PBXProject "FileScrubby" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				38D9FE962D6269A100E651FA /* Debug */,
@@ -521,7 +527,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		38D9FE982D6269A100E651FA /* Build configuration list for PBXNativeTarget "Scrubby" */ = {
+		38D9FE982D6269A100E651FA /* Build configuration list for PBXNativeTarget "FileScrubby" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				38D9FE992D6269A100E651FA /* Debug */,
@@ -530,7 +536,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		38D9FE9B2D6269A100E651FA /* Build configuration list for PBXNativeTarget "ScrubbyTests" */ = {
+		38D9FE9B2D6269A100E651FA /* Build configuration list for PBXNativeTarget "FileScrubbyTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				38D9FE9C2D6269A100E651FA /* Debug */,
@@ -539,7 +545,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		38D9FE9E2D6269A100E651FA /* Build configuration list for PBXNativeTarget "ScrubbyUITests" */ = {
+		38D9FE9E2D6269A100E651FA /* Build configuration list for PBXNativeTarget "FileScrubbyUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				38D9FE9F2D6269A100E651FA /* Debug */,
