@@ -26,7 +26,7 @@ extension String {
     }
     
     /// Helper: Extracts words from camelCase, dot-separated, parenthesis-separated, and space-separated strings
-    private func cleanedWords() -> [String] {
+    func cleanedWords() -> [String] {
         var modified = self
         
         // Convert camelCase to spaced words
