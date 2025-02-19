@@ -16,9 +16,6 @@ struct ScrubbyApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .frame(minWidth: 800,  minHeight: 580)
-                .navigationTitle("Scrubby")
-                .background(Color.clear)
         }
         .defaultSize(width: 1200, height: 900)
 //        .windowStyle(.hiddenTitleBar)
