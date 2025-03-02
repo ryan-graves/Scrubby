@@ -33,7 +33,7 @@ struct ContentView: View {
     @State private var suffix: String = ""
     @State private var findReplacePairs: [FindReplacePair] = [FindReplacePair()]
     @State private var fileFormat: FileFormat = .none
-    @State private var overwrite: Bool = true
+    @State private var overwrite: Bool = false
     @State private var moveFiles: Bool = false
     @State private var thumbnailSizePreference: ThumbnailSize = .small
     
@@ -53,7 +53,6 @@ struct ContentView: View {
                         .padding(.vertical, 4)
                     Spacer()
                     if !selectedFiles.isEmpty {
-                        
                         Picker("Thumbnail Size", selection: $thumbnailSizePreference) {
                             ForEach(ThumbnailSize.allCases, id: \.self) { size in
                                 Image(systemName: size.systemImage)
@@ -101,35 +100,10 @@ struct ContentView: View {
                     }
                     .padding(.bottom, 48)
                     .frame(maxHeight: .infinity)
-                    
                 } else {
                     List {
                         ForEach(selectedFiles, id: \.self) { file in
-                            HStack(spacing: 8) {
-                                FileThumbnailView(url: file, thumbnailSize: thumbnailSizePreference)
-                                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                                HStack(spacing: 16) {
-                                    Text(file.lastPathComponent)
-                                    Spacer(minLength: 4)
-                                }
-                                HStack(spacing: 16) {
-                                    Image(systemName: "arrow.right")
-                                    Text(processedFileName(for: file.lastPathComponent))
-                                        .foregroundColor(.secondary)
-                                    Spacer(minLength: 4)
-                                }
-                                // Minus button to remove the file from the list.
-                                Button {
-                                    if let index = selectedFiles.firstIndex(of: file) {
-                                        selectedFiles.remove(at: index)
-                                    }
-                                } label: {
-                                    Image(systemName: "minus.circle.fill")
-                                        .foregroundColor(.red)
-                                }
-                                .buttonStyle(.borderless)
-                            }
-                            .padding(.vertical, 4)
+                            FileListItem(thumbnailSizePreference: thumbnailSizePreference, file: file, selectedFiles: $selectedFiles, processedFileName: processedFileName(for: file.lastPathComponent))
                         }
                         HStack {
                             Button("Add Files") {
@@ -172,9 +146,8 @@ struct ContentView: View {
             }
             .padding()
             
-            
             // Right Side – Options & Save
-            VStack {
+            VStack(spacing: 16) {
                 RenamingStepsListView(renamingSteps: $renamingSteps)
                 
                 Menu("Add Step") {
@@ -194,6 +167,35 @@ struct ContentView: View {
                 .padding(.top, 4)
                 Spacer()
                 VStack(spacing: 8) {
+//                    HStack {
+//                        Text("File Handling Preferences")
+//                            .font(.headline)
+//                        Spacer()
+//                    }
+                    HStack {
+                        Picker("Move or Copy", selection: $moveFiles) {
+                            VStack(alignment: .leading) {
+                                Text("Move files")
+                                Text("The original file will be removed and replaced")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .tag(true)
+                            .padding(.vertical, 2)
+                            VStack(alignment: .leading) {
+                                Text("Create copies")
+                                Text("Files will be copied to their new name and/or location")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .tag(false)
+                            .padding(.vertical, 2)
+                        }
+                        .pickerStyle(RadioGroupPickerStyle())
+                        .labelsHidden()
+                        Spacer()
+                    }
+                    Divider()
                     HStack {
                         VStack(alignment: .leading) {
                             Text("Overwrite Files")
@@ -207,29 +209,15 @@ struct ContentView: View {
                             .toggleStyle(.switch)
                             .controlSize(.mini)
                     }
-                    Divider()
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text("Move Files")
-                            Text(moveFiles ? "The original file will be removed and replaced" : "Files will be copied to their new name/location")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: 4)
-                        Toggle("Move Files (remove originals)", isOn: $moveFiles)
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                            .controlSize(.mini)
-                    }
                 }
                 .padding(12)
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(6)
                 .formStyle(.grouped)
                 
+                if !selectedFiles.isEmpty {
                 HStack {
                     Spacer()
-                    if !selectedFiles.isEmpty {
                         Button("Save Files") {
                             isFolderImporterPresented = true
                         }
@@ -242,17 +230,12 @@ struct ContentView: View {
                             case .success(let urls):
                                 if let folder = urls.first {
                                     destinationFolderURL = folder
-                                    print("Destination folder: \(folder.path)")
-                                    
-                                    print("Overwrite files: \(overwrite)")
-                                    print("Move files: \(moveFiles)")
                                     saveFiles()
                                 }
                             case .failure(let error):
                                 showToastMessage("Error selecting folder: \(error.localizedDescription)", isError: true)
                             }
                         }
-
                         .buttonStyle(.borderedProminent)
                     }
                 }
@@ -261,8 +244,7 @@ struct ContentView: View {
             .frame(minWidth: 200, idealWidth: 250, maxWidth: 350, minHeight: 280)
             .layoutPriority(0)
         }
-        
-        .frame(minWidth: 800,  minHeight: 580)
+        .frame(minWidth: 800, minHeight: 580)
         .navigationTitle("FileScrubby")
         .background(Color.clear)
         .overlay(
@@ -271,17 +253,12 @@ struct ContentView: View {
                 .animation(.easeInOut, value: showToast),
             alignment: .bottom
         )
-        
     }
-    
     
     // MARK: - Process Filename
     func processedFileName(for original: String) -> String {
         let ext = (original as NSString).pathExtension
         var baseName = (original as NSString).deletingPathExtension
-        
-        // Example: add a fixed prefix to ensure the name changes.
-        baseName = "Renamed_" + baseName
         
         for step in renamingSteps {
             switch step.type {
@@ -312,7 +289,6 @@ struct ContentView: View {
         }
         return baseName
     }
-
     
     // MARK: - Save Files
     func saveFiles() {
@@ -321,8 +297,8 @@ struct ContentView: View {
             return
         }
         
-        // Start accessing the destination folder’s security-scoped resource.
         let didStartAccessing = folder.startAccessingSecurityScopedResource()
+
         defer {
             if didStartAccessing { folder.stopAccessingSecurityScopedResource() }
         }
@@ -334,21 +310,13 @@ struct ContentView: View {
         
         var errorsOccurred = false
         
-        // Process each selected file.
         for url in selectedFiles {
             let originalName = url.lastPathComponent
             let newName = processedFileName(for: originalName)
-            // Determine the final destination URL.
             let finalDestinationURL: URL = overwrite
                 ? folder.appendingPathComponent(newName)
                 : uniqueDestinationURL(for: newName, in: folder)
             
-            // Log the operation:
-            print("Processing file: \(originalName)")
-            print("New filename: \(newName)")
-            print("Final destination: \(finalDestinationURL.path)")
-            
-            // Create a temporary file URL in the destination folder.
             let tempURL = folder.appendingPathComponent("temp_\(UUID().uuidString)_\(newName)")
             
             guard url.startAccessingSecurityScopedResource() else {
@@ -356,37 +324,32 @@ struct ContentView: View {
                 continue
             }
             do {
-                // First, copy the source file to the temporary location.
                 try FileManager.default.copyItem(at: url, to: tempURL)
                 
-                // If overwriting and a file exists at the final destination, trash it.
                 if overwrite, FileManager.default.fileExists(atPath: finalDestinationURL.path) {
                     try FileManager.default.trashItem(at: finalDestinationURL, resultingItemURL: nil)
                 }
                 
-                // Move the temporary file into its final destination.
                 try FileManager.default.moveItem(at: tempURL, to: finalDestinationURL)
                 
-                // If moveFiles is enabled, then trash the original source file.
                 if moveFiles {
                     try FileManager.default.trashItem(at: url, resultingItemURL: nil)
                 }
+                
             } catch {
                 errorsOccurred = true
-                print("Error processing \(originalName): \(error)")
                 showToastMessage("Error processing \(originalName): \(error.localizedDescription)", isError: true)
-                // Clean up any temporary file that may have been created.
                 try? FileManager.default.removeItem(at: tempURL)
             }
             url.stopAccessingSecurityScopedResource()
         }
-
         
         if !errorsOccurred {
             showToastMessage("Files processed successfully!", isError: false)
+        } else {
+            print("DEBUG: File save completed with errors.")
         }
     }
-    
     
     // MARK: - Unique Destination URL Helper
     func uniqueDestinationURL(for fileName: String, in folder: URL) -> URL {
@@ -423,8 +386,8 @@ enum FileFormat: CaseIterable {
     var displayName: String {
         switch self {
         case .none: return "None"
-        case .hyphenated: return "Hyphenated"
-        case .camelCased: return "CamelCase"
+        case .hyphenated: return "lowercase-hyphenated"
+        case .camelCased: return "camelCase"
         case .lowercaseUnderscored: return "snake_case"
         }
     }
@@ -460,7 +423,6 @@ struct ToastView: View {
 }
 
 // MARK: - Unified Model
-
 struct RenamingStep: Identifiable, Equatable {
     let id = UUID()
     var type: RenamingStepType
@@ -473,7 +435,7 @@ enum RenamingStepType: Equatable {
     case fileFormat(FileFormat)
 }
 
-// MARK: RenamingStepsListView
+// MARK: - RenamingStepsListView
 struct RenamingStepsListView: View {
     @Binding var renamingSteps: [RenamingStep]
     // Track the currently dragged step.
@@ -487,12 +449,10 @@ struct RenamingStepsListView: View {
                         renamingSteps.remove(at: index)
                     }
                 })
-                // Make the row draggable.
                 .onDrag {
                     self.draggingStep = step
                     return NSItemProvider(object: step.id.uuidString as NSString)
                 }
-                // Handle dropping on the row.
                 .onDrop(of: [.text], delegate: StepDropDelegate(item: step, steps: $renamingSteps, current: $draggingStep))
                 .listRowSeparator(.hidden)
                 .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
@@ -509,7 +469,6 @@ struct RenamingStepRow: View {
     
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            // Your row content:
             HStack {
                 if isHovering {
                     Image(systemName: "arrow.up.and.down.square.fill")
@@ -518,67 +477,66 @@ struct RenamingStepRow: View {
                     Image(systemName: "arrow.up.and.down.square.fill")
                         .foregroundStyle(.tertiary)
                 }
-                    switch step.type {
-                    case .findReplace(let find, let replace):
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Find & Replace").font(.headline)
-                            
-                            HStack {
-                                TextField("Find", text: Binding(
-                                    get: { find },
-                                    set: { newValue in
-                                        step.type = .findReplace(find: newValue, replace: replace)
-                                    }
-                                ))
-                                .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
-                                .padding(6)
-                                .background(Color(NSColor.quaternarySystemFill))
-                                .cornerRadius(6)
-                                TextField("Replace", text: Binding(
-                                    get: { replace },
-                                    set: { newValue in
-                                        step.type = .findReplace(find: find, replace: newValue)
-                                    }
-                                ))
-                                .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
-                                .padding(6)
-                                .background(Color(NSColor.quaternarySystemFill))
-                                .cornerRadius(6)
+                switch step.type {
+                case .findReplace(let find, let replace):
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Find & Replace").font(.headline)
+                        HStack {
+                            TextField("Find", text: Binding(
+                                get: { find },
+                                set: { newValue in
+                                    step.type = .findReplace(find: newValue, replace: replace)
+                                }
+                            ))
+                            .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
+                            .padding(6)
+                            .background(Color(NSColor.quaternarySystemFill))
+                            .cornerRadius(6)
+                            TextField("Replace", text: Binding(
+                                get: { replace },
+                                set: { newValue in
+                                    step.type = .findReplace(find: find, replace: newValue)
+                                }
+                            ))
+                            .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
+                            .padding(6)
+                            .background(Color(NSColor.quaternarySystemFill))
+                            .cornerRadius(6)
+                        }
+                    }
+                case .prefix(let value):
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Prefix").font(.headline)
+                        TextField("Prefix", text: Binding(
+                            get: { value },
+                            set: { newValue in
+                                step.type = .prefix(newValue)
                             }
-                        }
-                    case .prefix(let value):
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Prefix").font(.headline)
-                            TextField("Prefix", text: Binding(
-                                get: { value },
-                                set: { newValue in
-                                    step.type = .prefix(newValue)
-                                }
-                            ))
-                            .padding(6)
-                            .background(Color(NSColor.quaternarySystemFill))
-                            .cornerRadius(6)
-                        }
-                        .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
-                    case .suffix(let value):
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Suffix").font(.headline)
-                            TextField("Suffix", text: Binding(
-                                get: { value },
-                                set: { newValue in
-                                    step.type = .suffix(newValue)
-                                }
-                            ))
-                            .padding(6)
-                            .background(Color(NSColor.quaternarySystemFill))
-                            .cornerRadius(6)
-                        }
-                        .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
-                    case .fileFormat(let format):
-                        HStack(alignment: .top, spacing: 16) {
-                            Text("Format").font(.headline)
-                            HStack {
-                                Picker("Format", selection: Binding(
+                        ))
+                        .padding(6)
+                        .background(Color(NSColor.quaternarySystemFill))
+                        .cornerRadius(6)
+                    }
+                    .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
+                case .suffix(let value):
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Suffix").font(.headline)
+                        TextField("Suffix", text: Binding(
+                            get: { value },
+                            set: { newValue in
+                                step.type = .suffix(newValue)
+                            }
+                        ))
+                        .padding(6)
+                        .background(Color(NSColor.quaternarySystemFill))
+                        .cornerRadius(6)
+                    }
+                    .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
+                case .fileFormat(let format):
+                    HStack(alignment: .top, spacing: 16) {
+                        Text("Format").font(.headline)
+                        HStack {
+                            Picker("Format", selection: Binding(
                                 get: {
                                     if case let .fileFormat(currentFormat) = step.type {
                                         return currentFormat
@@ -588,25 +546,22 @@ struct RenamingStepRow: View {
                                 set: { newValue in
                                     step.type = .fileFormat(newValue)
                                 }
-                                )) {
-                                    ForEach(FileFormat.allCases, id: \.self) { format in
-                                        Text(format.displayName).tag(format)
-                                    }
+                            )) {
+                                ForEach(FileFormat.allCases, id: \.self) { format in
+                                    Text(format.displayName).tag(format)
                                 }
-                                .pickerStyle(.radioGroup)
-                                .labelsHidden()
-                                Spacer()
                             }
-                            .padding(6)
-                            
-                            .background(Color(NSColor.quaternarySystemFill))
-                            .cornerRadius(6)
+                            .pickerStyle(.radioGroup)
+                            .labelsHidden()
+                            Spacer()
                         }
-                        .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
+//                        .padding(6)
+//                        .background(Color(NSColor.quaternarySystemFill))
+                        .cornerRadius(6)
                     }
-                
+                    .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
+                }
                 Spacer(minLength: 0)
-                
             }
             .textFieldStyle(.plain)
             .padding(.vertical, 8)
@@ -615,7 +570,6 @@ struct RenamingStepRow: View {
             .background(Color(NSColor.controlBackgroundColor))
             .cornerRadius(6)
             
-            // Show the remove button only on hover.
             if isHovering {
                 Button(action: removeAction) {
                     Image(systemName: "minus.circle.fill")
@@ -631,7 +585,6 @@ struct RenamingStepRow: View {
     }
 }
 
-
 struct StepDropDelegate: DropDelegate {
     let item: RenamingStep
     @Binding var steps: [RenamingStep]
@@ -643,7 +596,6 @@ struct StepDropDelegate: DropDelegate {
               let toIndex = steps.firstIndex(of: item)
         else { return }
         
-        // Reorder if the dragged item is not already in the target position.
         if steps[toIndex] != current {
             withAnimation {
                 steps.move(fromOffsets: IndexSet(integer: fromIndex),
@@ -684,7 +636,6 @@ enum ThumbnailSize: String, CaseIterable {
     }
 }
 
-
 // MARK: - FileThumbnailView
 struct FileThumbnailView: View {
     let url: URL
@@ -700,8 +651,11 @@ struct FileThumbnailView: View {
                     .scaledToFit()
                     .frame(width: thumbnailSize.size.width, height: thumbnailSize.size.height)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                        )
             } else {
-                // Placeholder while the thumbnail is loading.
                 Rectangle()
                     .fill(Color.gray.opacity(0.3))
                     .frame(width: thumbnailSize.size.width, height: thumbnailSize.size.height)
@@ -714,7 +668,6 @@ struct FileThumbnailView: View {
     }
 
     private func loadThumbnail() {
-        // Use the current screen's scale or a default.
         let scale = NSScreen.main?.backingScaleFactor ?? 2.0
         let request = QLThumbnailGenerator.Request(fileAt: url,
                                                    size: CGSize(width: 256, height: 256),
@@ -724,9 +677,10 @@ struct FileThumbnailView: View {
             if let thumbnail = thumbnail {
                 DispatchQueue.main.async {
                     thumbnailImage = thumbnail.nsImage
+                    print("DEBUG: Thumbnail loaded for \(url.lastPathComponent)")
                 }
             } else {
-                print("Error generating thumbnail: \(String(describing: error))")
+                print("DEBUG: Error generating thumbnail for \(url.lastPathComponent): \(String(describing: error))")
             }
         }
     }
@@ -736,4 +690,50 @@ struct FileThumbnailView: View {
 #Preview {
     ContentView()
         .frame(width: 800, height: 600)
+}
+
+struct FileListItem: View {
+    var thumbnailSizePreference: ThumbnailSize
+    var file: URL
+    @Binding var selectedFiles: [URL]
+    var processedFileName: String
+    @State private var isHovering: Bool = false
+    
+    var body: some View {
+        HStack(spacing: thumbnailSizePreference == .large ? 16 : 8) {
+            FileThumbnailView(url: file, thumbnailSize: thumbnailSizePreference)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+            HStack(spacing: 16) {
+                Text(file.lastPathComponent)
+                Spacer(minLength: 4)
+            }
+            HStack(spacing: 16) {
+                Image(systemName: "arrow.right")
+                Text(processedFileName)
+                    .foregroundColor(.secondary)
+                Spacer(minLength: 4)
+            }
+            HStack {
+                Spacer()
+                if isHovering {
+                    Button {
+                        if let index = selectedFiles.firstIndex(of: file) {
+                            selectedFiles.remove(at: index)
+                        }
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .foregroundColor(.red)
+                    }
+                    .buttonStyle(.borderless)
+                    .padding(4)
+                }
+            }
+            .frame(width: 32)
+        }
+        .padding(.vertical, 4)
+        .onHover { hovering in
+            withAnimation { isHovering = hovering }
+        }
+        
+    }
 }
