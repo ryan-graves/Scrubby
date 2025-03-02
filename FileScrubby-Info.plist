@@ -5,7 +5,7 @@
 	<key>SUEnableInstallerLauncherService</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>https://github.com/ryan-graves/Scrubby/blob/main/Releases/appcast.xml</string>
+	<string>https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>leaOOoTlpm3GlrcL/GQtnYskall1rMRX6aWtWyy8/qg=</string>
 </dict>
