@@ -8,7 +8,7 @@
             <sparkle:version>9</sparkle:version>
             <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.2</sparkle:minimumSystemVersion>
-            <enclosure url="https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/FileScrubby.dmg" length="5445408" type="application/octet-stream" sparkle:edSignature="zQ++E1PJl0/naC+VZaRTA9Cg6oHANK4xEWp/zgdQaGZzT5FaPTJVmGBcqcinu9VxrBCgikIGaNYp1q2ShqLXDQ=="/>
+            <enclosure url="https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/FileScrubby.dmg" length="5605152" type="application/octet-stream" sparkle:edSignature="12Dq/McNUyWI3F22gzrYuvq0heYGoCjW8CXB1p93KyiEylC3HLFIuotq/U9JhEBiVHqwJujE+xoerhg6ZniaBg=="/>
         </item>
         <item>
             <title>1.0</title>
