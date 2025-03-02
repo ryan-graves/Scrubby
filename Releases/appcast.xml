@@ -1,0 +1,14 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>FileScrubby</title>
+        <item>
+            <title>1.0</title>
+            <pubDate>Sun, 02 Mar 2025 13:09:18 -0600</pubDate>
+            <sparkle:version>7</sparkle:version>
+            <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.2</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/ryan-graves/Scrubby/blob/main/Releases/FileScrubby.dmg" length="5519136" type="application/octet-stream" sparkle:edSignature="KjjugduyrQ9KDzhkx+3RGMxBww7iImmGw4Xnzv9AwJA4kmCqgflHsKon/sDPuoP//Y7W9CcaBE+f57GqwgINCw=="/>
+        </item>
+    </channel>
+</rss>
