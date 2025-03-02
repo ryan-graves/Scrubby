@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		382F25852D74DA3B00CEC171 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 382F25842D74DA3B00CEC171 /* Sparkle */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		38D9FE852D6269A100E651FA /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +28,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		382F25862D74DAE000CEC171 /* FileScrubby-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "FileScrubby-Info.plist"; sourceTree = "<group>"; };
 		38D9FE732D6269A000E651FA /* FileScrubby.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FileScrubby.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		38D9FE842D6269A100E651FA /* FileScrubbyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FileScrubbyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		38D9FE8E2D6269A100E651FA /* FileScrubbyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FileScrubbyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -52,6 +57,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				382F25852D74DA3B00CEC171 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -75,6 +81,7 @@
 		38D9FE6A2D6269A000E651FA = {
 			isa = PBXGroup;
 			children = (
+				382F25862D74DAE000CEC171 /* FileScrubby-Info.plist */,
 				38D9FE752D6269A000E651FA /* Scrubby */,
 				38D9FE872D6269A100E651FA /* ScrubbyTests */,
 				38D9FE912D6269A100E651FA /* ScrubbyUITests */,
@@ -112,6 +119,7 @@
 			);
 			name = FileScrubby;
 			packageProductDependencies = (
+				382F25842D74DA3B00CEC171 /* Sparkle */,
 			);
 			productName = Scrubby;
 			productReference = 38D9FE732D6269A000E651FA /* FileScrubby.app */;
@@ -195,6 +203,9 @@
 			);
 			mainGroup = 38D9FE6A2D6269A000E651FA;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				382F25832D74DA3B00CEC171 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 38D9FE742D6269A000E651FA /* Products */;
 			projectDirPath = "";
@@ -396,12 +407,13 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_ASSET_PATHS = "\"Scrubby/Preview Content\"";
 				DEVELOPMENT_TEAM = MCAF54H27N;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "FileScrubby-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = FileScrubby;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -426,12 +438,13 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_ASSET_PATHS = "\"Scrubby/Preview Content\"";
 				DEVELOPMENT_TEAM = MCAF54H27N;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "FileScrubby-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = FileScrubby;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -452,7 +465,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = MCAF54H27N;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
@@ -470,7 +483,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = MCAF54H27N;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
@@ -487,7 +500,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = MCAF54H27N;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
@@ -503,7 +516,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = MCAF54H27N;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
@@ -555,6 +568,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		382F25832D74DA3B00CEC171 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.7.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		382F25842D74DA3B00CEC171 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 382F25832D74DA3B00CEC171 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 38D9FE6B2D6269A000E651FA /* Project object */;
 }
