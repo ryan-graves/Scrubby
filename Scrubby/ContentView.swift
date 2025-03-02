@@ -438,17 +438,20 @@ enum RenamingStepType: Equatable {
 // MARK: - RenamingStepsListView
 struct RenamingStepsListView: View {
     @Binding var renamingSteps: [RenamingStep]
-    // Track the currently dragged step.
     @State private var draggingStep: RenamingStep?
-    
+
     var body: some View {
         VStack(spacing: 8) {
             ForEach($renamingSteps) { $step in
-                RenamingStepRow(step: $step, removeAction: {
-                    if let index = renamingSteps.firstIndex(where: { $0.id == step.id }) {
-                        renamingSteps.remove(at: index)
+                RenamingStepRow(
+                    step: $step,
+                    draggingStep: $draggingStep,
+                    removeAction: {
+                        if let index = renamingSteps.firstIndex(where: { $0.id == step.id }) {
+                            renamingSteps.remove(at: index)
+                        }
                     }
-                })
+                )
                 .onDrag {
                     self.draggingStep = step
                     return NSItemProvider(object: step.id.uuidString as NSString)
@@ -459,16 +462,29 @@ struct RenamingStepsListView: View {
             }
         }
         .listStyle(.plain)
+        .onChange(of: draggingStep) { newValue in
+            // If a drag is active, schedule a reset after 2 seconds.
+            if newValue != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    if draggingStep != nil {
+                        draggingStep = nil
+                        print("DEBUG: Dragging state reset after timeout")
+                    }
+                }
+            }
+        }
     }
 }
 
 struct RenamingStepRow: View {
     @Binding var step: RenamingStep
+    @Binding var draggingStep: RenamingStep?
     let removeAction: () -> Void
-    @State private var isHovering = false
-    
+    @State private var isHovering: Bool = false
+
     var body: some View {
         ZStack(alignment: .topTrailing) {
+            // Your row content:
             HStack {
                 if isHovering {
                     Image(systemName: "arrow.up.and.down.square.fill")
@@ -555,8 +571,7 @@ struct RenamingStepRow: View {
                             .labelsHidden()
                             Spacer()
                         }
-//                        .padding(6)
-//                        .background(Color(NSColor.quaternarySystemFill))
+                        .padding(6)
                         .cornerRadius(6)
                     }
                     .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
@@ -579,6 +594,8 @@ struct RenamingStepRow: View {
                 .padding(4)
             }
         }
+        // Set opacity to 0 if this step is currently being dragged.
+        .opacity(draggingStep?.id == step.id ? 0 : 1)
         .onHover { hovering in
             withAnimation { isHovering = hovering }
         }
@@ -589,13 +606,13 @@ struct StepDropDelegate: DropDelegate {
     let item: RenamingStep
     @Binding var steps: [RenamingStep]
     @Binding var current: RenamingStep?
-    
+
     func dropEntered(info: DropInfo) {
         guard let current = current, current != item,
               let fromIndex = steps.firstIndex(of: current),
               let toIndex = steps.firstIndex(of: item)
         else { return }
-        
+
         if steps[toIndex] != current {
             withAnimation {
                 steps.move(fromOffsets: IndexSet(integer: fromIndex),
@@ -603,9 +620,15 @@ struct StepDropDelegate: DropDelegate {
             }
         }
     }
-    
+
+    // Remove dropExited altogether.
+
     func performDrop(info: DropInfo) -> Bool {
-        self.current = nil
+        // Delay clearing slightly (0.3 seconds) so the drag preview fades.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            self.current = nil
+            print("DEBUG: Dragging state cleared in performDrop")
+        }
         return true
     }
 }
