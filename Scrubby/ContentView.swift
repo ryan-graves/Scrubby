@@ -10,13 +10,6 @@ import UniformTypeIdentifiers
 import AppKit
 import QuickLookThumbnailing
 
-// MARK: - FindReplacePair Struct
-struct FindReplacePair: Identifiable, Equatable {
-    let id = UUID()
-    var find: String = ""
-    var replace: String = ""
-}
-
 struct ContentView: View {
     // MARK: - State Properties
     @State private var selectedFiles: [URL] = []
@@ -41,6 +34,13 @@ struct ContentView: View {
     @State private var showToast: Bool = false
     @State private var toastMessage: String = ""
     @State private var toastIsError: Bool = false
+    
+    // Preset dialog states...
+    @State private var showSavePresetDialog: Bool = false
+    @State private var showPresetManagementDialog: Bool = false
+    @State private var newPresetName: String = ""
+    @State private var presetActionError: String = ""
+    @StateObject private var presetManager = PresetManager()
         
     // MARK: - Body
     var body: some View {
@@ -148,6 +148,32 @@ struct ContentView: View {
             
             // Right Side – Options & Save
             VStack(spacing: 16) {
+                Menu {
+                    if presetManager.presets.isEmpty {
+                        Text("No saved presets")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(presetManager.presets) { preset in
+                            Button(preset.name) {
+                                applyPreset(preset)
+                            }
+                        }
+                        Divider()
+                    }
+                    Button("Save Current as Preset...") {
+                        showSavePresetDialog = true
+                    }
+                    Button("Manage Presets...") {
+                        showPresetManagementDialog = true
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "bookmark")
+                        Text("Presets")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                
                 RenamingStepsListView(renamingSteps: $renamingSteps)
                 
                 Menu("Add Step") {
@@ -165,13 +191,9 @@ struct ContentView: View {
                     }
                 }
                 .padding(.top, 4)
+                
                 Spacer()
                 VStack(spacing: 8) {
-//                    HStack {
-//                        Text("File Handling Preferences")
-//                            .font(.headline)
-//                        Spacer()
-//                    }
                     HStack {
                         Picker("Move or Copy", selection: $moveFiles) {
                             VStack(alignment: .leading) {
@@ -253,6 +275,43 @@ struct ContentView: View {
                 .animation(.easeInOut, value: showToast),
             alignment: .bottom
         )
+        // Add Save Preset Dialog
+        .sheet(isPresented: $showSavePresetDialog) {
+            VStack(spacing: 16) {
+                Text("Save Preset")
+                    .font(.headline)
+                
+                TextField("Preset Name", text: $newPresetName)
+                    .textFieldStyle(.roundedBorder)
+                
+                if !presetActionError.isEmpty {
+                    Text(presetActionError)
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                }
+                
+                HStack {
+                    Spacer()
+                    Button("Cancel") {
+                        showSavePresetDialog = false
+                        presetActionError = ""
+                    }
+                    .keyboardShortcut(.escape)
+                    
+                    Button("Save") {
+                        saveCurrentAsPreset()
+                    }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(newPresetName.isEmpty)
+                }
+            }
+            .padding()
+            .frame(width: 350)
+        }
+        // Add Preset Management Dialog
+        .sheet(isPresented: $showPresetManagementDialog) {
+            PresetManagementView(presetManager: presetManager)
+        }
     }
     
     // MARK: - Process Filename
@@ -377,19 +436,37 @@ struct ContentView: View {
             withAnimation { showToast = false }
         }
     }
-}
-
-// MARK: - FileFormat Enum
-enum FileFormat: CaseIterable {
-    case none, hyphenated, camelCased, lowercaseUnderscored
     
-    var displayName: String {
-        switch self {
-        case .none: return "None"
-        case .hyphenated: return "lowercase-hyphenated"
-        case .camelCased: return "camelCase"
-        case .lowercaseUnderscored: return "snake_case"
+    // MARK: - Preset Helpers
+    func saveCurrentAsPreset() {
+        guard !newPresetName.isEmpty else {
+            presetActionError = "Preset name cannot be empty."
+            return
         }
+        
+        let preset = Preset(
+            name: newPresetName,
+            renamingSteps: renamingSteps,
+            overwrite: overwrite,
+            moveFiles: moveFiles
+        )
+        
+        do {
+            try presetManager.savePreset(preset)
+            showSavePresetDialog = false
+            newPresetName = ""
+            presetActionError = ""
+            showToastMessage("Preset saved successfully!", isError: false)
+        } catch {
+            presetActionError = "Error saving preset: \(error.localizedDescription)"
+        }
+    }
+    
+    func applyPreset(_ preset: Preset) {
+        renamingSteps = preset.renamingSteps
+        overwrite = preset.overwrite
+        moveFiles = preset.moveFiles
+        showToastMessage("Applied preset: \(preset.name)", isError: false)
     }
 }
 
@@ -420,19 +497,6 @@ struct ToastView: View {
         .padding(.top, 10)
         .padding(8)
     }
-}
-
-// MARK: - Unified Model
-struct RenamingStep: Identifiable, Equatable {
-    let id = UUID()
-    var type: RenamingStepType
-}
-
-enum RenamingStepType: Equatable {
-    case findReplace(find: String, replace: String)
-    case prefix(String)
-    case suffix(String)
-    case fileFormat(FileFormat)
 }
 
 // MARK: - RenamingStepsListView
@@ -630,32 +694,6 @@ struct StepDropDelegate: DropDelegate {
             print("DEBUG: Dragging state cleared in performDrop")
         }
         return true
-    }
-}
-
-enum ThumbnailSize: String, CaseIterable {
-    case small
-//    case medium
-    case large
-
-    var size: CGSize {
-        switch self {
-        case .small:
-            return CGSize(width: 24, height: 24)
-        case .large:
-            return CGSize(width: 128, height: 128)
-        }
-    }
-    
-    var systemImage: String {
-        switch self {
-        case .small:
-            return "square.resize.down"
-//        case .medium:
-//            return "square"
-        case .large:
-            return "square.resize.up"
-        }
     }
 }
 
