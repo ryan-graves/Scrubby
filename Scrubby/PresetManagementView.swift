@@ -42,73 +42,90 @@ struct PresetManagementView: View {
                     Spacer()
                 }
             } else {
-                List(presetManager.presets) { preset in
-                    HStack {
-                        VStack(alignment: .leading) {
-                            if editMode && selectedPreset?.id == preset.id {
-                                TextField("Preset name", text: $editingName)
-                                    .textFieldStyle(.roundedBorder)
-                                    .onSubmit {
-                                        saveEditedName()
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(presetManager.presets) { preset in
+                            VStack(spacing: 0) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        if editMode && selectedPreset?.id == preset.id {
+                                            TextField("Preset name", text: $editingName)
+                                                .textFieldStyle(.roundedBorder)
+                                                .onSubmit {
+                                                    saveEditedName()
+                                                }
+                                        } else {
+                                            Text(preset.name)
+                                                .fontWeight(selectedPreset?.id == preset.id ? .bold : .regular)
+                                        }
+                                        Text("\(preset.renamingSteps.count) steps")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
                                     }
-                            } else {
-                                Text(preset.name)
-                                    .fontWeight(selectedPreset?.id == preset.id ? .bold : .regular)
-                                    .padding(.vertical, 2)
-                            }
-                            Text("\(preset.renamingSteps.count) steps")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if selectedPreset?.id == preset.id {
-                            if editMode {
-                                Button("Save") {
-                                    saveEditedName()
+                                    Spacer()
+                                    if selectedPreset?.id == preset.id {
+                                        if editMode {
+                                            Button("Save") {
+                                                saveEditedName()
+                                            }
+                                            .buttonStyle(.borderless)
+                                            .foregroundStyle(.blue)
+                                            Button("Cancel") {
+                                                editMode = false
+                                            }
+                                            .buttonStyle(.borderless)
+                                            .foregroundStyle(.secondary)
+                                        } else {
+                                            Button("Rename") {
+                                                startEditing(preset)
+                                            }
+                                            .buttonStyle(.borderless)
+                                            .foregroundStyle(.blue)
+                                            Button("Delete") {
+                                                confirmDelete = true
+                                            }
+                                            .buttonStyle(.borderless)
+                                            .foregroundStyle(.red)
+                                        }
+                                    }
                                 }
-                                .buttonStyle(.borderless)
-                                .foregroundStyle(.blue)
-                                Button("Cancel") {
-                                    editMode = false
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(selectedPreset?.id == preset.id ?
+                                              Color.accentColor.opacity(0.1) :
+                                                Color.clear)
+                                        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+                                )
+                                .contentShape(RoundedRectangle(cornerRadius: 8))
+                                .onTapGesture {
+                                    if !editMode {
+                                        selectedPreset = preset
+                                    }
                                 }
-                                .buttonStyle(.borderless)
-                                .foregroundStyle(.secondary)
-                            } else {
-                                Button("Rename") {
-                                    startEditing(preset)
+                                .alert("Delete Preset?", isPresented: $confirmDelete) {
+                                    Button("Cancel", role: .cancel) {}
+                                    Button("Delete", role: .destructive) {
+                                        if let preset = selectedPreset {
+                                            deletePreset(preset)
+                                        }
+                                    }
+                                } message: {
+                                    Text("Are you sure you want to delete the preset '\(selectedPreset?.name ?? "")'? This action cannot be undone.")
                                 }
-                                .buttonStyle(.borderless)
-                                .foregroundStyle(.blue)
-                                Button("Delete") {
-                                    confirmDelete = true
+                                HStack {
+                                    Spacer()
+                                    Divider()
+                                    Spacer()
                                 }
-                                .buttonStyle(.borderless)
-                                .foregroundStyle(.red)
                             }
                         }
                     }
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 12)
-                    .contentShape(RoundedRectangle(cornerRadius: 8))
-                    .background(selectedPreset?.id == preset.id ? Color.accentColor.opacity(0.1) : Color.clear)
-                    .cornerRadius(8)
-                    .onTapGesture {
-                        if !editMode {
-                            selectedPreset = preset
-                        }
-                    }
-                    .alert("Delete Preset?", isPresented: $confirmDelete) {
-                        Button("Cancel", role: .cancel) {}
-                        Button("Delete", role: .destructive) {
-                            if let preset = selectedPreset {
-                                deletePreset(preset)
-                            }
-                        }
-                    } message: {
-                        Text("Are you sure you want to delete the preset '\(selectedPreset?.name ?? "")'? This action cannot be undone.")
-                    }
+                    .padding(4)
                 }
-                .listStyle(.plain)
+                .scrollIndicators(.automatic)
+                .background(Color(.windowBackgroundColor))
             }
             
             if !errorMessage.isEmpty {
