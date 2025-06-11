@@ -8,7 +8,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import AppKit
-import QuickLookThumbnailing
 
 struct ContentView: View {
     // MARK: - State Properties
@@ -41,11 +40,13 @@ struct ContentView: View {
     @State private var newPresetName: String = ""
     @State private var presetActionError: String = ""
     @StateObject private var presetManager = PresetManager()
-        
+    @State private var showInspector: Bool = true
+    
+    @State private var columnVisibility: NavigationSplitViewVisibility = .doubleColumn
+    
     // MARK: - Body
     var body: some View {
-        HSplitView {
-            // Left Side – File List & File Management
+        NavigationStack {  // Left Side – File List & File Management
             VStack(spacing: 16) {
                 HStack {
                     Text("File Preview")
@@ -95,7 +96,7 @@ struct ContentView: View {
                                 showToastMessage("Error adding files: \(error.localizedDescription)", isError: true)
                             }
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.borderedProminent)
                         .keyboardShortcut(.defaultAction)
                     }
                     .padding(.bottom, 48)
@@ -143,54 +144,62 @@ struct ContentView: View {
                         Spacer()
                     }
                 }
+                
+                
             }
             .padding()
-            
-            // Right Side – Options & Save
+        }
+        .inspector(isPresented: $showInspector) {
             VStack(spacing: 16) {
-                Menu {
-                    if presetManager.presets.isEmpty {
-                        Text("No saved presets")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(presetManager.presets) { preset in
-                            Button(preset.name) {
-                                applyPreset(preset)
-                            }
+                HStack {
+                    Menu {
+                        Button("Find & Replace") {
+                            renamingSteps.append(RenamingStep(type: .findReplace(find: "", replace: "")))
                         }
-                        Divider()
+                        Button("Prefix") {
+                            renamingSteps.append(RenamingStep(type: .prefix("")))
+                        }
+                        Button("Suffix") {
+                            renamingSteps.append(RenamingStep(type: .suffix("")))
+                        }
+                        Button("File Format") {
+                            renamingSteps.append(RenamingStep(type: .fileFormat(.none)))
+                        }
+                    } label: {
+                        Label("Add Step", systemImage: "plus.circle")
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    Button("Save Current as Preset...") {
-                        showSavePresetDialog = true
+                    .padding(.top, 4)
+                    
+                    Menu {
+                        if presetManager.presets.isEmpty {
+                            Text("No saved presets")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(presetManager.presets) { preset in
+                                Button(preset.name) {
+                                    applyPreset(preset)
+                                }
+                            }
+                            Divider()
+                        }
+                        Button("Save Current as Preset...") {
+                            showSavePresetDialog = true
+                        }
+                        Button("Manage Presets...") {
+                            showPresetManagementDialog = true
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "bookmark")
+                            Text("Presets")
+                        }
                     }
-                    Button("Manage Presets...") {
-                        showPresetManagementDialog = true
-                    }
-                } label: {
-                    HStack {
-                        Image(systemName: "bookmark")
-                        Text("Presets")
-                    }
+                    .buttonStyle(.borderedProminent)
                 }
-                .buttonStyle(.borderedProminent)
-                
                 RenamingStepsListView(renamingSteps: $renamingSteps)
                 
-                Menu("Add Step") {
-                    Button("Find & Replace") {
-                        renamingSteps.append(RenamingStep(type: .findReplace(find: "", replace: "")))
-                    }
-                    Button("Prefix") {
-                        renamingSteps.append(RenamingStep(type: .prefix("")))
-                    }
-                    Button("Suffix") {
-                        renamingSteps.append(RenamingStep(type: .suffix("")))
-                    }
-                    Button("File Format") {
-                        renamingSteps.append(RenamingStep(type: .fileFormat(.none)))
-                    }
-                }
-                .padding(.top, 4)
+                
                 
                 Spacer()
                 VStack(spacing: 8) {
@@ -238,8 +247,8 @@ struct ContentView: View {
                 .formStyle(.grouped)
                 
                 if !selectedFiles.isEmpty {
-                HStack {
-                    Spacer()
+                    HStack {
+                        Spacer()
                         Button("Save Files") {
                             isFolderImporterPresented = true
                         }
@@ -263,12 +272,19 @@ struct ContentView: View {
                 }
             }
             .padding()
-            .frame(minWidth: 200, idealWidth: 250, maxWidth: 350, minHeight: 280)
-            .layoutPriority(0)
+            .inspectorColumnWidth(min: 400, ideal: 400, max: 400)
+            
         }
         .frame(minWidth: 800, minHeight: 580)
         .navigationTitle("FileScrubby")
-        .background(Color.clear)
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button(action: { showInspector.toggle() }) {
+                    Image(systemName: "list.bullet")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
         .overlay(
             ToastView(message: toastMessage, isError: toastIsError, showToast: $showToast)
                 .opacity(showToast ? 1 : 0)
@@ -357,7 +373,7 @@ struct ContentView: View {
         }
         
         let didStartAccessing = folder.startAccessingSecurityScopedResource()
-
+        
         defer {
             if didStartAccessing { folder.stopAccessingSecurityScopedResource() }
         }
@@ -373,8 +389,8 @@ struct ContentView: View {
             let originalName = url.lastPathComponent
             let newName = processedFileName(for: originalName)
             let finalDestinationURL: URL = overwrite
-                ? folder.appendingPathComponent(newName)
-                : uniqueDestinationURL(for: newName, in: folder)
+            ? folder.appendingPathComponent(newName)
+            : uniqueDestinationURL(for: newName, in: folder)
             
             let tempURL = folder.appendingPathComponent("temp_\(UUID().uuidString)_\(newName)")
             
@@ -470,331 +486,11 @@ struct ContentView: View {
     }
 }
 
-// MARK: - ToastView
-struct ToastView: View {
-    let message: String
-    let isError: Bool
-    @Binding var showToast: Bool
-    
-    var body: some View {
-        HStack {
-            Text(message)
-            Button {
-                withAnimation { showToast = false }
-            } label: {
-                Image(systemName: "xmark.circle")
-            }
-            .buttonStyle(.borderless)
-            .focusEffectDisabled()
-            .frame(width: 16, height: 16)
-        }
-        .padding(.vertical, 8)
-        .padding(.leading, 16)
-        .padding(.trailing, 8)
-        .background(isError ? Color.red : Color.green)
-        .foregroundColor(.white)
-        .cornerRadius(8)
-        .padding(.top, 10)
-        .padding(8)
-    }
-}
-
-// MARK: - RenamingStepsListView
-struct RenamingStepsListView: View {
-    @Binding var renamingSteps: [RenamingStep]
-    @State private var draggingStep: RenamingStep?
-
-    var body: some View {
-        VStack(spacing: 8) {
-            ForEach($renamingSteps) { $step in
-                RenamingStepRow(
-                    step: $step,
-                    draggingStep: $draggingStep,
-                    removeAction: {
-                        if let index = renamingSteps.firstIndex(where: { $0.id == step.id }) {
-                            renamingSteps.remove(at: index)
-                        }
-                    }
-                )
-                .onDrag {
-                    self.draggingStep = step
-                    return NSItemProvider(object: step.id.uuidString as NSString)
-                }
-                .onDrop(of: [.text], delegate: StepDropDelegate(item: step, steps: $renamingSteps, current: $draggingStep))
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-            }
-        }
-        .listStyle(.plain)
-        .onChange(of: draggingStep) { newValue in
-            // If a drag is active, schedule a reset after 2 seconds.
-            if newValue != nil {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    if draggingStep != nil {
-                        draggingStep = nil
-                        print("DEBUG: Dragging state reset after timeout")
-                    }
-                }
-            }
-        }
-    }
-}
-
-struct RenamingStepRow: View {
-    @Binding var step: RenamingStep
-    @Binding var draggingStep: RenamingStep?
-    let removeAction: () -> Void
-    @State private var isHovering: Bool = false
-
-    var body: some View {
-        ZStack(alignment: .topTrailing) {
-            // Your row content:
-            HStack {
-                if isHovering {
-                    Image(systemName: "arrow.up.and.down.square.fill")
-                        .foregroundStyle(.tint)
-                } else {
-                    Image(systemName: "arrow.up.and.down.square.fill")
-                        .foregroundStyle(.tertiary)
-                }
-                switch step.type {
-                case .findReplace(let find, let replace):
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Find & Replace").font(.headline)
-                        HStack {
-                            TextField("Find", text: Binding(
-                                get: { find },
-                                set: { newValue in
-                                    step.type = .findReplace(find: newValue, replace: replace)
-                                }
-                            ))
-                            .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
-                            .padding(6)
-                            .background(Color(NSColor.quaternarySystemFill))
-                            .cornerRadius(6)
-                            TextField("Replace", text: Binding(
-                                get: { replace },
-                                set: { newValue in
-                                    step.type = .findReplace(find: find, replace: newValue)
-                                }
-                            ))
-                            .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
-                            .padding(6)
-                            .background(Color(NSColor.quaternarySystemFill))
-                            .cornerRadius(6)
-                        }
-                    }
-                case .prefix(let value):
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Prefix").font(.headline)
-                        TextField("Prefix", text: Binding(
-                            get: { value },
-                            set: { newValue in
-                                step.type = .prefix(newValue)
-                            }
-                        ))
-                        .padding(6)
-                        .background(Color(NSColor.quaternarySystemFill))
-                        .cornerRadius(6)
-                    }
-                    .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
-                case .suffix(let value):
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Suffix").font(.headline)
-                        TextField("Suffix", text: Binding(
-                            get: { value },
-                            set: { newValue in
-                                step.type = .suffix(newValue)
-                            }
-                        ))
-                        .padding(6)
-                        .background(Color(NSColor.quaternarySystemFill))
-                        .cornerRadius(6)
-                    }
-                    .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
-                case .fileFormat(let format):
-                    HStack(alignment: .top, spacing: 16) {
-                        Text("Format").font(.headline)
-                        HStack {
-                            Picker("Format", selection: Binding(
-                                get: {
-                                    if case let .fileFormat(currentFormat) = step.type {
-                                        return currentFormat
-                                    }
-                                    return .none
-                                },
-                                set: { newValue in
-                                    step.type = .fileFormat(newValue)
-                                }
-                            )) {
-                                ForEach(FileFormat.allCases, id: \.self) { format in
-                                    Text(format.displayName).tag(format)
-                                }
-                            }
-                            .pickerStyle(.radioGroup)
-                            .labelsHidden()
-                            Spacer()
-                        }
-                        .padding(6)
-                        .cornerRadius(6)
-                    }
-                    .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
-                }
-                Spacer(minLength: 0)
-            }
-            .textFieldStyle(.plain)
-            .padding(.vertical, 8)
-            .padding(.leading, 8)
-            .padding(.trailing, 8)
-            .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(6)
-            
-            if isHovering {
-                Button(action: removeAction) {
-                    Image(systemName: "minus.circle.fill")
-                        .foregroundColor(.red)
-                }
-                .buttonStyle(.plain)
-                .padding(4)
-            }
-        }
-        // Set opacity to 0 if this step is currently being dragged.
-        .opacity(draggingStep?.id == step.id ? 0 : 1)
-        .onHover { hovering in
-            withAnimation { isHovering = hovering }
-        }
-    }
-}
-
-struct StepDropDelegate: DropDelegate {
-    let item: RenamingStep
-    @Binding var steps: [RenamingStep]
-    @Binding var current: RenamingStep?
-
-    func dropEntered(info: DropInfo) {
-        guard let current = current, current != item,
-              let fromIndex = steps.firstIndex(of: current),
-              let toIndex = steps.firstIndex(of: item)
-        else { return }
-
-        if steps[toIndex] != current {
-            withAnimation {
-                steps.move(fromOffsets: IndexSet(integer: fromIndex),
-                           toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex)
-            }
-        }
-    }
-
-    // Remove dropExited altogether.
-
-    func performDrop(info: DropInfo) -> Bool {
-        // Delay clearing slightly (0.3 seconds) so the drag preview fades.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            self.current = nil
-            print("DEBUG: Dragging state cleared in performDrop")
-        }
-        return true
-    }
-}
-
-// MARK: - FileThumbnailView
-struct FileThumbnailView: View {
-    let url: URL
-    let thumbnailSize: ThumbnailSize
-
-    @State private var thumbnailImage: NSImage? = nil
-
-    var body: some View {
-        Group {
-            if let thumbnailImage = thumbnailImage {
-                Image(nsImage: thumbnailImage)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: thumbnailSize.size.width, height: thumbnailSize.size.height)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                        )
-            } else {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(width: thumbnailSize.size.width, height: thumbnailSize.size.height)
-                    .overlay(ProgressView())
-            }
-        }
-        .onAppear {
-            loadThumbnail()
-        }
-    }
-
-    private func loadThumbnail() {
-        let scale = NSScreen.main?.backingScaleFactor ?? 2.0
-        let request = QLThumbnailGenerator.Request(fileAt: url,
-                                                   size: CGSize(width: 256, height: 256),
-                                                   scale: scale,
-                                                   representationTypes: .thumbnail)
-        QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { (thumbnail, error) in
-            if let thumbnail = thumbnail {
-                DispatchQueue.main.async {
-                    thumbnailImage = thumbnail.nsImage
-                    print("DEBUG: Thumbnail loaded for \(url.lastPathComponent)")
-                }
-            } else {
-                print("DEBUG: Error generating thumbnail for \(url.lastPathComponent): \(String(describing: error))")
-            }
-        }
-    }
-}
-
 // MARK: - Preview
 #Preview {
     ContentView()
         .frame(width: 800, height: 600)
 }
 
-struct FileListItem: View {
-    var thumbnailSizePreference: ThumbnailSize
-    var file: URL
-    @Binding var selectedFiles: [URL]
-    var processedFileName: String
-    @State private var isHovering: Bool = false
-    
-    var body: some View {
-        HStack(spacing: thumbnailSizePreference == .large ? 16 : 8) {
-            FileThumbnailView(url: file, thumbnailSize: thumbnailSizePreference)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-            HStack(spacing: 16) {
-                Text(file.lastPathComponent)
-                Spacer(minLength: 4)
-            }
-            HStack(spacing: 16) {
-                Image(systemName: "arrow.right")
-                Text(processedFileName)
-                    .foregroundColor(.secondary)
-                Spacer(minLength: 4)
-            }
-            HStack {
-                Spacer()
-                if isHovering {
-                    Button {
-                        if let index = selectedFiles.firstIndex(of: file) {
-                            selectedFiles.remove(at: index)
-                        }
-                    } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .foregroundColor(.red)
-                    }
-                    .buttonStyle(.borderless)
-                    .padding(4)
-                }
-            }
-            .frame(width: 32)
-        }
-        .padding(.vertical, 4)
-        .onHover { hovering in
-            withAnimation { isHovering = hovering }
-        }
-        
-    }
-}
+
+
