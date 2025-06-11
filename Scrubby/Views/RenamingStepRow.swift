@@ -11,19 +11,34 @@ import UniformTypeIdentifiers
 struct RenamingStepRow: View {
     @Binding var step: RenamingStep
     @Binding var draggingStep: RenamingStep?
+    let moveUpAction: () -> Void
+    let moveDownAction: () -> Void
     let removeAction: () -> Void
+    let isOnlyStep: Bool
     @State private var isHovering: Bool = false
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
             // Your row content:
             HStack {
-                if isHovering {
-                    Image(systemName: "arrow.up.and.down.square.fill")
-                        .foregroundStyle(.tint)
-                } else {
-                    Image(systemName: "arrow.up.and.down.square.fill")
-                        .foregroundStyle(.tertiary)
+                if !isOnlyStep {
+                    VStack {
+                        Button(action: moveUpAction) {
+                            Image(systemName: "arrow.up")
+                                .foregroundStyle(isHovering ? Color.accentColor : Color.secondary)
+                        }
+                        .buttonStyle(.bordered)
+                        .padding(4)
+                        .frame(width: 12)
+                        Button(action: moveDownAction) {
+                            Image(systemName: "arrow.down")
+                                .foregroundStyle(isHovering ? Color.accentColor : Color.secondary)
+                        }
+                        .buttonStyle(.bordered)
+                        .padding(4)
+                        .frame(width: 12)
+
+                    }
                 }
                 switch step.type {
                 case .findReplace(let find, let replace):
@@ -133,4 +148,3 @@ struct RenamingStepRow: View {
         }
     }
 }
-
