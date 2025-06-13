@@ -38,6 +38,7 @@ public enum RenamingStepType: Equatable {
     case prefix(String)
     case suffix(String)
     case fileFormat(FileFormat)
+    case replaceFilenameWith(String)
 }
 
 // MARK: - RenamingStep
@@ -62,7 +63,7 @@ extension RenamingStep: Codable {
     }
     
     enum StepKind: String, Codable {
-        case findReplace, prefix, suffix, fileFormat
+        case findReplace, prefix, suffix, fileFormat, replaceFilenameWith
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -85,6 +86,9 @@ extension RenamingStep: Codable {
         case .fileFormat(let format):
             try typeContainer.encode(StepKind.fileFormat, forKey: .kind)
             try typeContainer.encode(format, forKey: .format)
+        case .replaceFilenameWith(let value):
+            try typeContainer.encode(StepKind.replaceFilenameWith, forKey: .kind)
+            try typeContainer.encode(value, forKey: .value)
         }
     }
     
@@ -109,6 +113,9 @@ extension RenamingStep: Codable {
         case .fileFormat:
             let format = try typeContainer.decode(FileFormat.self, forKey: .format)
             type = .fileFormat(format)
+        case .replaceFilenameWith:
+            let value = try typeContainer.decode(String.self, forKey: .value)
+            type = .replaceFilenameWith(value)
         }
     }
 }
@@ -179,3 +186,4 @@ public enum PresetError: Error, LocalizedError {
         }
     }
 }
+

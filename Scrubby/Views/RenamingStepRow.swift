@@ -93,6 +93,20 @@ struct RenamingStepRow: View {
                         .cornerRadius(6)
                     }
                     .onDrop(of: [UTType.text], isTargeted: nil) { _ in false }
+                case .replaceFilenameWith(let value):
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Rename").font(.headline)
+                        TextField("New Name", text: Binding(
+                            get: { value },
+                            set: { newValue in
+                                step.type = .replaceFilenameWith(newValue)
+                            }
+                        ))
+                        .padding(6)
+                        .background(Color(NSColor.quaternarySystemFill))
+                        .cornerRadius(6)
+                    }
+                    .onDrop(of: [UTType.text], isTargeted: nil) { _ in false }
                 case .fileFormat(_):
                     HStack(alignment: .top, spacing: 16) {
                         Text("Format").font(.headline)

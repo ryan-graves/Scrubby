@@ -162,6 +162,9 @@ struct ContentView: View {
                         Button("Suffix") {
                             renamingSteps.append(RenamingStep(type: .suffix("")))
                         }
+                        Button("Replace Filename") {
+                            renamingSteps.append(RenamingStep(type: .replaceFilenameWith("")))
+                        }
                         Button("File Format") {
                             renamingSteps.append(RenamingStep(type: .fileFormat(.none)))
                         }
@@ -359,6 +362,8 @@ struct ContentView: View {
                 case .none:
                     break
                 }
+            case .replaceFilenameWith(let value):
+                baseName = value
             }
         }
         
@@ -494,6 +499,3 @@ struct ContentView: View {
     ContentView()
         .frame(width: 800, height: 600)
 }
-
-
-
