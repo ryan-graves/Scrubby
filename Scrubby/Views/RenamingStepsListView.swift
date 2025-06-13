@@ -13,27 +13,29 @@ struct RenamingStepsListView: View {
     @State private var draggingStep: RenamingStep? = nil
 
     var body: some View {
-        VStack(spacing: 8) {
-            ForEach($renamingSteps) { $step in
-                VStack(spacing: 8) {
-                    RenamingStepRow(
-                        step: $step,
-                        draggingStep: $draggingStep,
-                        moveUpAction: { moveStepUp(step) },
-                        moveDownAction: { moveStepDown(step) },
-                        removeAction: {
-                            if let index = renamingSteps.firstIndex(where: { $0.id == step.id }) {
-                                renamingSteps.remove(at: index)
-                            }
-                        },
-                        isOnlyStep: renamingSteps.count == 1
-                    )
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+        ScrollView {
+            VStack(spacing: 8) {
+                ForEach($renamingSteps) { $step in
+                    VStack(spacing: 8) {
+                        RenamingStepRow(
+                            step: $step,
+                            draggingStep: $draggingStep,
+                            moveUpAction: { moveStepUp(step) },
+                            moveDownAction: { moveStepDown(step) },
+                            removeAction: {
+                                if let index = renamingSteps.firstIndex(where: { $0.id == step.id }) {
+                                    renamingSteps.remove(at: index)
+                                }
+                            },
+                            isOnlyStep: renamingSteps.count == 1
+                        )
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                    }
                 }
             }
+            .animation(.default, value: renamingSteps)
         }
-        .animation(.default, value: renamingSteps)
     }
 
     private func moveStepUp(_ step: RenamingStep) {

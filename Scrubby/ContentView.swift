@@ -169,8 +169,8 @@ struct ContentView: View {
                         Label("Add Step", systemImage: "plus.circle")
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .padding(.top, 4)
                     
+                    Spacer()
                     Menu {
                         if presetManager.presets.isEmpty {
                             Text("No saved presets")
@@ -240,9 +240,12 @@ struct ContentView: View {
                             .toggleStyle(.switch)
                             .controlSize(.mini)
                     }
+                    Text(overwrite ? "Files with the same name will be replaced" : "Files with the same name will get a numbered suffix")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(12)
-                .background(Color(NSColor.controlBackgroundColor))
+                .background(.ultraThinMaterial)
                 .cornerRadius(6)
                 .formStyle(.grouped)
                 

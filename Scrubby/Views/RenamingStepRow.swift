@@ -19,7 +19,6 @@ struct RenamingStepRow: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            // Your row content:
             HStack {
                 if !isOnlyStep {
                     VStack {
@@ -28,17 +27,16 @@ struct RenamingStepRow: View {
                                 .foregroundStyle(isHovering ? Color.accentColor : Color.secondary)
                         }
                         .buttonStyle(.bordered)
-                        .padding(4)
                         .frame(width: 12)
                         Button(action: moveDownAction) {
                             Image(systemName: "arrow.down")
                                 .foregroundStyle(isHovering ? Color.accentColor : Color.secondary)
                         }
                         .buttonStyle(.bordered)
-                        .padding(4)
                         .frame(width: 12)
 
                     }
+                    .padding(8)
                 }
                 switch step.type {
                 case .findReplace(let find, let replace):
@@ -129,7 +127,7 @@ struct RenamingStepRow: View {
             .padding(.vertical, 8)
             .padding(.leading, 8)
             .padding(.trailing, 8)
-            .background(Color(NSColor.controlBackgroundColor))
+            .background(.ultraThinMaterial)
             .cornerRadius(6)
             
             if isHovering {
@@ -141,10 +139,62 @@ struct RenamingStepRow: View {
                 .padding(4)
             }
         }
-        // Set opacity to 0 if this step is currently being dragged.
-        .opacity(draggingStep?.id == step.id ? 0 : 1)
         .onHover { hovering in
             withAnimation { isHovering = hovering }
         }
     }
+}
+
+#Preview {
+    struct RenamingStepRowPreviews: View {
+        @State var findReplaceStep = RenamingStep(type: .findReplace(find: "FindText", replace: "ReplaceText"))
+        @State var prefixStep = RenamingStep(type: .prefix("PRE_"))
+        @State var suffixStep = RenamingStep(type: .suffix("_SUF"))
+        @State var fileFormatStep = RenamingStep(type: .fileFormat(.camelCased))
+        @State var draggingStep: RenamingStep? = nil
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 24) {
+                Text("Find & Replace Step").font(.title2)
+                RenamingStepRow(
+                    step: $findReplaceStep,
+                    draggingStep: $draggingStep,
+                    moveUpAction: {},
+                    moveDownAction: {},
+                    removeAction: {},
+                    isOnlyStep: false
+                )
+                Text("Prefix Step").font(.title2)
+                RenamingStepRow(
+                    step: $prefixStep,
+                    draggingStep: $draggingStep,
+                    moveUpAction: {},
+                    moveDownAction: {},
+                    removeAction: {},
+                    isOnlyStep: false
+                )
+                Text("Suffix Step").font(.title2)
+                RenamingStepRow(
+                    step: $suffixStep,
+                    draggingStep: $draggingStep,
+                    moveUpAction: {},
+                    moveDownAction: {},
+                    removeAction: {},
+                    isOnlyStep: false
+                )
+                Text("File Format Step").font(.title2)
+                RenamingStepRow(
+                    step: $fileFormatStep,
+                    draggingStep: $draggingStep,
+                    moveUpAction: {},
+                    moveDownAction: {},
+                    removeAction: {},
+                    isOnlyStep: false
+                )
+            }
+            .padding()
+            .frame(maxWidth: 500)
+        }
+    }
+    return RenamingStepRowPreviews()
 }
