@@ -51,10 +51,7 @@ struct FileThumbnailView: View {
             if let thumbnail = thumbnail {
                 DispatchQueue.main.async {
                     thumbnailImage = thumbnail.nsImage
-                    print("DEBUG: Thumbnail loaded for \(url.lastPathComponent)")
                 }
-            } else {
-                print("DEBUG: Error generating thumbnail for \(url.lastPathComponent): \(String(describing: error))")
             }
         }
     }

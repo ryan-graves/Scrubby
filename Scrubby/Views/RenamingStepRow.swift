@@ -134,6 +134,78 @@ struct RenamingStepRow: View {
                         .cornerRadius(6)
                     }
                     .onDrop(of: [UTType.text], isTargeted: nil) { _ in false }
+                case .sequentialNumbering(let start, let minDigits, let position):
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Sequential Numbering").font(.headline)
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Start Number")
+                                TextField(
+                                    "Start Number",
+                                    text: Binding(
+                                        get: { String(start) },
+                                        set: { newValue in
+                                            if let intVal = Int(newValue), intVal >= 0 {
+                                                step.type = .sequentialNumbering(start: intVal, minDigits: minDigits, position: position)
+                                            }
+                                            else if newValue.isEmpty {
+                                                // Allow clearing, treat as 0
+                                                step.type = .sequentialNumbering(start: 0, minDigits: minDigits, position: position)
+                                            }
+                                        }
+                                    )
+                                )
+                                .textFieldStyle(.plain)
+                                .padding(6)
+                                .background(Color(NSColor.quaternarySystemFill))
+                                .cornerRadius(6)
+                                .frame(minWidth: 70)
+                                .multilineTextAlignment(.trailing)
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Min Digits")
+                                TextField(
+                                    "Min Digits",
+                                    text: Binding(
+                                        get: { String(minDigits) },
+                                        set: { newValue in
+                                            if let intVal = Int(newValue), intVal >= 0 {
+                                                step.type = .sequentialNumbering(start: start, minDigits: intVal, position: position)
+                                            }
+                                            else if newValue.isEmpty {
+                                                step.type = .sequentialNumbering(start: start, minDigits: 0, position: position)
+                                            }
+                                        }
+                                    )
+                                )
+                                .textFieldStyle(.plain)
+                                .padding(6)
+                                .background(Color(NSColor.quaternarySystemFill))
+                                .cornerRadius(6)
+                                .frame(minWidth: 70)
+                                .multilineTextAlignment(.trailing)
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Position")
+                                Picker(
+                                    "Position",
+                                    selection: Binding(
+                                        get: { position },
+                                        set: { newValue in
+                                            step.type = .sequentialNumbering(start: start, minDigits: minDigits, position: newValue)
+                                        }
+                                    )
+                                ) {
+                                    ForEach(SequentialNumberPosition.allCases, id: \.self) { pos in
+                                        Text(pos.displayName).tag(pos)
+                                    }
+                                }
+                                .pickerStyle(.segmented)
+                                .frame(minWidth: 140)
+                            }
+                        }
+                    }
+                    .onDrop(of: [UTType.text], isTargeted: nil) { _ in false }
                 }
                 Spacer(minLength: 0)
             }
@@ -165,6 +237,7 @@ struct RenamingStepRow: View {
         @State var prefixStep = RenamingStep(type: .prefix("PRE_"))
         @State var suffixStep = RenamingStep(type: .suffix("_SUF"))
         @State var fileFormatStep = RenamingStep(type: .fileFormat(.camelCased))
+        @State var sequentialNumberingStep = RenamingStep(type: .sequentialNumbering(start: 1, minDigits: 3, position: .prefix))
         @State var draggingStep: RenamingStep? = nil
 
         var body: some View {
@@ -199,6 +272,15 @@ struct RenamingStepRow: View {
                 Text("File Format Step").font(.title2)
                 RenamingStepRow(
                     step: $fileFormatStep,
+                    draggingStep: $draggingStep,
+                    moveUpAction: {},
+                    moveDownAction: {},
+                    removeAction: {},
+                    isOnlyStep: false
+                )
+                Text("Sequential Numbering Step").font(.title2)
+                RenamingStepRow(
+                    step: $sequentialNumberingStep,
                     draggingStep: $draggingStep,
                     moveUpAction: {},
                     moveDownAction: {},

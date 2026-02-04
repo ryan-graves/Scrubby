@@ -9,18 +9,18 @@ import SwiftUI
 
 struct FileListItem: View {
     var thumbnailSizePreference: ThumbnailSize
-    var file: URL
-    @Binding var selectedFiles: [URL]
+    var file: SelectedFile
+    @Binding var selectedFiles: [SelectedFile]
     var processedFileName: String
     @State private var isHovering: Bool = false
     
     var body: some View {
         HStack(spacing: thumbnailSizePreference == .large ? 16 : 8) {
-            FileThumbnailView(url: file, thumbnailSize: thumbnailSizePreference)
+            FileThumbnailView(url: URL(fileURLWithPath: file.fileName), thumbnailSize: thumbnailSizePreference)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
             VStack(alignment: .leading, spacing: 2) {
-                Text(file.lastPathComponent)
-                Text(file.path)
+                Text(file.fileName)
+                Text(file.fileName)
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -35,7 +35,7 @@ struct FileListItem: View {
                 Spacer()
                 if isHovering {
                     Button {
-                        if let index = selectedFiles.firstIndex(of: file) {
+                        if let index = selectedFiles.firstIndex(where: { $0.id == file.id }) {
                             selectedFiles.remove(at: index)
                         }
                     } label: {
