@@ -3,6 +3,17 @@
     <channel>
         <title>FileScrubby</title>
         <item>
+            <title>1.2</title>
+            <pubDate>Fri, 06 Feb 2026 02:15:29 -0600</pubDate>
+            <sparkle:version>11</sparkle:version>
+            <sparkle:shortVersionString>1.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/FileScrubby-1.2.dmg" length="3538462" type="application/octet-stream" sparkle:edSignature="dWS0GXMF4FWzqSxWqTRui8PDWi72TZ/fma1XBS2Se4DWFy5NqkKBYLvi8Ttz+VfjqbV9ePQn0qu5o1eueLmbDw=="/>
+            <sparkle:deltas>
+                <enclosure url="https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/FileScrubby11-10.delta" sparkle:deltaFrom="10" length="1487434" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="846480" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,en" sparkle:edSignature="vj6cFmcd7aqNofxs+pGz/Cs0IvG5j+ZFbjyxIZ/Kp1NyBjsgs0Cyt61C0esqfwxjnu1UANs374gygWxevVhRAA=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.1</title>
             <pubDate>Sat, 07 Jun 2025 19:59:30 -0500</pubDate>
             <sparkle:version>10</sparkle:version>

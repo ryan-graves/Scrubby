@@ -20,13 +20,28 @@ echo -e "${GREEN}🚀 FileScrubby Release Script${NC}"
 echo "================================"
 
 # Check if Sparkle's tools are available
-if ! command -v generate_appcast &> /dev/null; then
-    echo -e "${RED}❌ Sparkle tools not found!${NC}"
-    echo "Install Sparkle CLI tools:"
-    echo "  brew install sparkle"
-    echo "  Or download from: https://sparkle-project.org"
-    exit 1
+# First check standard PATH, then check Homebrew Caskroom location
+if command -v generate_appcast &> /dev/null; then
+    GENERATE_APPCAST="generate_appcast"
+elif [ -f "/opt/homebrew/Caskroom/sparkle/2.8.1/bin/generate_appcast" ]; then
+    GENERATE_APPCAST="/opt/homebrew/Caskroom/sparkle/2.8.1/bin/generate_appcast"
+elif [ -f "/usr/local/Caskroom/sparkle/2.8.1/bin/generate_appcast" ]; then
+    GENERATE_APPCAST="/usr/local/Caskroom/sparkle/2.8.1/bin/generate_appcast"
+else
+    # Try to find it anywhere in Homebrew
+    SPARKLE_BIN=$(find /opt/homebrew/Caskroom/sparkle -name generate_appcast 2>/dev/null | head -1)
+    if [ -n "$SPARKLE_BIN" ]; then
+        GENERATE_APPCAST="$SPARKLE_BIN"
+    else
+        echo -e "${RED}❌ Sparkle tools not found!${NC}"
+        echo "Install Sparkle CLI tools:"
+        echo "  brew install sparkle"
+        echo "  Or download from: https://sparkle-project.org"
+        exit 1
+    fi
 fi
+
+echo -e "${GREEN}Using Sparkle tool: $GENERATE_APPCAST${NC}"
 
 # Get version from user
 read -p "Enter version number (e.g., 1.2): " VERSION
@@ -98,7 +113,7 @@ fi
 
 # Generate appcast using Sparkle's tool
 cd "$RELEASES_DIR"
-generate_appcast --ed-key-file "$PRIVATE_KEY" \
+"$GENERATE_APPCAST" --ed-key-file "$PRIVATE_KEY" \
     --download-url-prefix "$GITHUB_RAW_BASE/" \
     --full-release-notes-url "$GITHUB_RAW_BASE/release-notes-$VERSION.html" \
     "$RELEASES_DIR"
