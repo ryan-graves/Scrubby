@@ -16,8 +16,20 @@ struct FileListItem: View {
     
     var body: some View {
         HStack(spacing: thumbnailSizePreference == .large ? 16 : 8) {
-            FileThumbnailView(url: URL(fileURLWithPath: file.fileName), thumbnailSize: thumbnailSizePreference)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+            // Try to resolve URL from bookmark for thumbnail
+            Group {
+                if let url = resolveURL() {
+                    FileThumbnailView(url: url, thumbnailSize: thumbnailSizePreference)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                } else {
+                    // Fallback: show generic file icon if bookmark can't be resolved
+                    Image(systemName: "doc.fill")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: thumbnailSizePreference.size.width, height: thumbnailSizePreference.size.height)
+                        .foregroundColor(.secondary)
+                }
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(file.fileName)
                     .lineLimit(1)
@@ -54,6 +66,14 @@ struct FileListItem: View {
             withAnimation { isHovering = hovering }
         }
         
+    }
+    
+    private func resolveURL() -> URL? {
+        var isStale = false
+        return try? URL(resolvingBookmarkData: file.bookmark, 
+                       options: [.withSecurityScope], 
+                       relativeTo: nil, 
+                       bookmarkDataIsStale: &isStale)
     }
 }
 

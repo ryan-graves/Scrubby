@@ -42,6 +42,9 @@ struct FileThumbnailView: View {
     }
 
     private func loadThumbnail() {
+        // Start accessing security-scoped resource for thumbnail generation
+        let didStartAccessing = url.startAccessingSecurityScopedResource()
+        
         let scale = NSScreen.main?.backingScaleFactor ?? 2.0
         let request = QLThumbnailGenerator.Request(fileAt: url,
                                                    size: CGSize(width: 256, height: 256),
@@ -52,6 +55,11 @@ struct FileThumbnailView: View {
                 DispatchQueue.main.async {
                     thumbnailImage = thumbnail.nsImage
                 }
+            }
+            
+            // Stop accessing when done
+            if didStartAccessing {
+                url.stopAccessingSecurityScopedResource()
             }
         }
     }

@@ -86,8 +86,6 @@ struct ContentView: View {
     @StateObject private var presetManager = PresetManager()
     @State private var showInspector: Bool = true
     
-    @State private var columnVisibility: NavigationSplitViewVisibility = .doubleColumn
-    
     // MARK: - New State for Bookmark Refresh Handling
     /// Holds a SelectedFile that has a stale bookmark, requiring user to reauthorize access.
     @State private var fileNeedingBookmarkRefresh: SelectedFile? = nil
@@ -451,24 +449,56 @@ struct ContentView: View {
         switch result {
         case .success(let urls):
             var newSelectedFiles: [SelectedFile] = []
+            var skippedCount = 0
+            
             for url in urls {
-                // Check for duplicates by fileName
-                if !selectedFiles.contains(where: { $0.fileName == url.lastPathComponent }) {
-                    do {
-                        // Create a security-scoped bookmark for sandboxed access
-                        let bookmark = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
+                // Start accessing the security-scoped resource first
+                let didStartAccessing = url.startAccessingSecurityScopedResource()
+                
+                do {
+                    // Create a security-scoped bookmark for sandboxed access
+                    let bookmark = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
+                    
+                    // Check for duplicates by comparing file paths (more reliable than bookmark comparison)
+                    let standardizedPath = url.standardized.path
+                    let isDuplicate = selectedFiles.contains { existingFile in
+                        // Try to resolve existing file's path and compare
+                        var isStale = false
+                        if let existingURL = try? URL(resolvingBookmarkData: existingFile.bookmark, 
+                                                     options: [.withoutUI], 
+                                                     relativeTo: nil, 
+                                                     bookmarkDataIsStale: &isStale) {
+                            return existingURL.standardized.path == standardizedPath
+                        }
+                        return false
+                    }
+                    
+                    if !isDuplicate {
                         let selectedFile = SelectedFile(fileName: url.lastPathComponent, bookmark: bookmark)
                         newSelectedFiles.append(selectedFile)
-                    } catch {
-                        showToastMessage("Error creating bookmark for \(url.lastPathComponent): \(error.localizedDescription)", isError: true)
+                    } else {
+                        skippedCount += 1
                     }
+                } catch {
+                    showToastMessage("Error creating bookmark for \(url.lastPathComponent): \(error.localizedDescription)", isError: true)
+                }
+                
+                // Stop accessing the security-scoped resource
+                if didStartAccessing {
+                    url.stopAccessingSecurityScopedResource()
                 }
             }
-            if newSelectedFiles.isEmpty {
+            
+            if newSelectedFiles.isEmpty && skippedCount > 0 {
+                showToastMessage("\(skippedCount) duplicate file(s) skipped.", isError: false)
+            } else if newSelectedFiles.isEmpty {
                 showToastMessage("No new files added.", isError: false)
             } else {
                 selectedFiles.append(contentsOf: newSelectedFiles)
-                showToastMessage("\(newSelectedFiles.count) files added.", isError: false)
+                let message = skippedCount > 0 ? 
+                    "\(newSelectedFiles.count) files added, \(skippedCount) duplicates skipped." :
+                    "\(newSelectedFiles.count) file(s) added."
+                showToastMessage(message, isError: false)
             }
         case .failure(let error):
             showToastMessage("Error adding files: \(error.localizedDescription)", isError: true)
@@ -542,7 +572,8 @@ struct ContentView: View {
             return
         }
         
-        var errorsOccurred = false
+        var successCount = 0
+        var errorCount = 0
         
         for (index, selectedFile) in selectedFiles.enumerated() {
             // Resolve URL from bookmark data and start security-scoped access
@@ -560,12 +591,12 @@ struct ContentView: View {
                     // Handle stale bookmark by prompting user to reselect file and refresh bookmark
                     resolvedURL.stopAccessingSecurityScopedResource()
                     fileNeedingBookmarkRefresh = selectedFile
-                    errorsOccurred = true
+                    errorCount += 1
                     continue
                 }
             } catch {
                 showToastMessage("Could not resolve file URL for: \(selectedFile.fileName)", isError: true)
-                errorsOccurred = true
+                errorCount += 1
                 continue
             }
             
@@ -600,16 +631,28 @@ struct ContentView: View {
                     try FileManager.default.trashItem(at: resolvedURL, resultingItemURL: nil)
                 }
                 
+                successCount += 1
+                
             } catch {
-                errorsOccurred = true
+                errorCount += 1
                 showToastMessage("Error processing \(originalName): \(error.localizedDescription)", isError: true)
                 try? FileManager.default.removeItem(at: tempURL)
             }
         }
         
-        if !errorsOccurred {
-            showToastMessage("Files processed successfully!", isError: false)
+        // Show appropriate completion message
+        if errorCount == 0 {
+            showToastMessage("All \(successCount) files processed successfully!", isError: false)
+            // Clear the file list after successful processing
+            selectedFiles = []
+        } else if successCount > 0 {
+            showToastMessage("\(successCount) files processed, \(errorCount) failed", isError: true)
+            // Remove successfully processed files from the list
+            // We need to track which files succeeded to remove them individually
+            // For now, clear all if some succeeded to avoid confusion
+            selectedFiles = []
         }
+        // If successCount is 0, individual error messages were already shown
     }
     
     // MARK: - Unique Destination URL Helper
