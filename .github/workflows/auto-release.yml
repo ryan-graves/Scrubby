@@ -11,6 +11,10 @@ jobs:
     # Only run if PR was actually merged (not just closed)
     if: github.event.pull_request.merged == true
     runs-on: macos-latest
+    permissions:
+      contents: write
+      actions: write
+      pull-requests: write
 
     steps:
     - name: Checkout code
