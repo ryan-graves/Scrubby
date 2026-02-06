@@ -4,7 +4,17 @@ Quick reference for creating new releases.
 
 ## 🚀 Quick Start
 
-### Option 1: Automated Script (Easiest)
+### Option 1: Auto-Release on PR Merge (Recommended)
+
+Simply add a release label to your PR before merging:
+
+- `release: major` - Breaking changes (1.x → 2.0)
+- `release: minor` - New features (1.2 → 1.3)
+- `release: patch` - Bug fixes (1.2 → 1.2.1)
+
+When you merge the PR to main, the release is created automatically! ✨
+
+### Option 2: Automated Script
 
 ```bash
 ./scripts/create-release.sh
@@ -12,7 +22,7 @@ Quick reference for creating new releases.
 
 Follow the prompts and it handles everything!
 
-### Option 2: GitHub Actions (Best for CI/CD)
+### Option 3: Manual GitHub Actions
 
 1. Go to GitHub Actions tab
 2. Select "Create Release" workflow
@@ -20,7 +30,7 @@ Follow the prompts and it handles everything!
 4. Enter version and build number
 5. Done! The release is created automatically
 
-### Option 3: Manual
+### Option 4: Manual
 
 See `Releases/README.md` for detailed manual steps.
 
