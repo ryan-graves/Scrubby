@@ -54,7 +54,10 @@ jobs:
         generate_appcast --ed-key-file ../sparkle_key \
           --download-url-prefix "https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/main/Releases/" \
           .
-        rm ../sparkle_key
+
+    - name: Cleanup Sparkle private key
+      if: always()
+      run: rm -f sparkle_key
 
     - name: Commit and push changes
       run: |

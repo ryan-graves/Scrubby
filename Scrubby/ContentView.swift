@@ -92,11 +92,6 @@ struct ContentView: View {
     /// Holds a SelectedFile that has a stale bookmark, requiring user to reauthorize access.
     @State private var fileNeedingBookmarkRefresh: SelectedFile? = nil
     
-    // MARK: - Init
-    init() {
-        loadBookmarksFromDefaults()
-    }
-    
     // MARK: - Body
     var body: some View {
         NavigationStack {  // Left Side – File List & File Management
@@ -337,9 +332,9 @@ struct ContentView: View {
                                 do {
                                     // Create new bookmark data with security scope
                                     let newBookmark = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
-                                    // Update the selectedFiles array with the new bookmark
+                                    // Update the selectedFiles array with the new bookmark, preserving original ID
                                     if let index = selectedFiles.firstIndex(where: { $0.id == file.id }) {
-                                        selectedFiles[index] = SelectedFile(fileName: file.fileName, bookmark: newBookmark)
+                                        selectedFiles[index] = SelectedFile(id: file.id, fileName: file.fileName, bookmark: newBookmark)
                                         showToastMessage("Access refreshed for \"\(file.fileName)\".", isError: false)
                                     }
                                 } catch {
@@ -424,6 +419,9 @@ struct ContentView: View {
                     regenerateBookmark(for: file)
                 }
             }
+        }
+        .onAppear {
+            loadBookmarksFromDefaults()
         }
     }
     
@@ -550,14 +548,18 @@ struct ContentView: View {
             // Resolve URL from bookmark data and start security-scoped access
             var resolvedURL: URL
             var isStale: Bool
+            var accessStarted = false
+            
             do {
                 let resolved = try selectedFile.resolvedSecurityScopedURL()
                 resolvedURL = resolved.url
                 isStale = resolved.isStale
+                accessStarted = true // Access was successfully started
+                
                 if isStale {
                     // Handle stale bookmark by prompting user to reselect file and refresh bookmark
-                    fileNeedingBookmarkRefresh = selectedFile
                     resolvedURL.stopAccessingSecurityScopedResource()
+                    fileNeedingBookmarkRefresh = selectedFile
                     errorsOccurred = true
                     continue
                 }
@@ -567,9 +569,11 @@ struct ContentView: View {
                 continue
             }
             
-            // Ensure that we stop accessing the security-scoped resource when done
+            // Ensure that we stop accessing the security-scoped resource when done (only if access was started)
             defer {
-                resolvedURL.stopAccessingSecurityScopedResource()
+                if accessStarted {
+                    resolvedURL.stopAccessingSecurityScopedResource()
+                }
             }
             
             let originalName = selectedFile.fileName
@@ -678,24 +682,26 @@ struct ContentView: View {
         panel.canChooseFiles = true
         panel.allowedContentTypes = [.item]
         panel.directoryURL = nil // Let user pick original location
-        let response = panel.runModal()
-        guard response == .OK, let url = panel.url else {
-            showToastMessage("File access was not reauthorized for \(file.fileName).", isError: true)
-            fileNeedingBookmarkRefresh = nil
-            return
-        }
-        do {
-            let newBookmark = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
-            // Update the bookmark in selectedFiles and persist
-            if let idx = selectedFiles.firstIndex(where: { $0.id == file.id }) {
-                selectedFiles[idx] = SelectedFile(fileName: url.lastPathComponent, bookmark: newBookmark)
+        
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else {
+                self.showToastMessage("File access was not reauthorized for \(file.fileName).", isError: true)
+                self.fileNeedingBookmarkRefresh = nil
+                return
             }
-            saveBookmarksToDefaults()
-            showToastMessage("Bookmark refreshed for \(file.fileName). Try renaming again.", isError: false)
-        } catch {
-            showToastMessage("Failed to refresh bookmark: \(error.localizedDescription)", isError: true)
+            do {
+                let newBookmark = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
+                // Update the bookmark in selectedFiles and persist
+                if let idx = self.selectedFiles.firstIndex(where: { $0.id == file.id }) {
+                    self.selectedFiles[idx] = SelectedFile(id: file.id, fileName: url.lastPathComponent, bookmark: newBookmark)
+                }
+                self.saveBookmarksToDefaults()
+                self.showToastMessage("Bookmark refreshed for \(file.fileName). Try renaming again.", isError: false)
+            } catch {
+                self.showToastMessage("Failed to refresh bookmark: \(error.localizedDescription)", isError: true)
+            }
+            self.fileNeedingBookmarkRefresh = nil
         }
-        fileNeedingBookmarkRefresh = nil
     }
 }
 

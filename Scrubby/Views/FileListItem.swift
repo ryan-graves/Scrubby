@@ -20,7 +20,8 @@ struct FileListItem: View {
                 .clipShape(RoundedRectangle(cornerRadius: 4))
             VStack(alignment: .leading, spacing: 2) {
                 Text(file.fileName)
-                Text(file.fileName)
+                    .lineLimit(1)
+                Text("Selected file")
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }

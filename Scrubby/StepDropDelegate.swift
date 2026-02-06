@@ -32,7 +32,6 @@ struct StepDropDelegate: DropDelegate {
         // Delay clearing slightly (0.3 seconds) so the drag preview fades.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             self.current = nil
-            print("DEBUG: Dragging state cleared in performDrop")
         }
         return true
     }
