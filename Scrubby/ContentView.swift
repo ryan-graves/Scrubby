@@ -8,11 +8,59 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import AppKit
-import QuickLookThumbnailing
+
+struct SelectedFile: Identifiable, Equatable {
+    let id: UUID
+    let fileName: String
+    let bookmark: Data
+    var resolvedURL: URL? = nil
+    
+    init(id: UUID = UUID(), fileName: String, bookmark: Data, resolvedURL: URL? = nil) {
+        self.id = id
+        self.fileName = fileName
+        self.bookmark = bookmark
+        self.resolvedURL = resolvedURL
+    }
+    
+    /// Resolves the security-scoped URL from this file's bookmark, starting access. Returns (url, isStale) or throws.
+    func resolvedSecurityScopedURL() throws -> (url: URL, isStale: Bool) {
+        var isStale = false
+        let url = try URL(resolvingBookmarkData: bookmark, options: [.withSecurityScope], relativeTo: nil, bookmarkDataIsStale: &isStale)
+        let accessed = url.startAccessingSecurityScopedResource()
+        if !accessed {
+            throw NSError(domain: "SecurityScopedURL", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to start accessing security-scoped resource."])
+        }
+        return (url, isStale)
+    }
+}
+
+extension SelectedFile: Codable {
+    enum CodingKeys: String, CodingKey { case id, fileName, bookmark }
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(fileName, forKey: .fileName)
+        try container.encode(bookmark, forKey: .bookmark)
+    }
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let decodedId = try container.decode(UUID.self, forKey: .id)
+        let decodedFileName = try container.decode(String.self, forKey: .fileName)
+        let decodedBookmark = try container.decode(Data.self, forKey: .bookmark)
+        self.init(id: decodedId, fileName: decodedFileName, bookmark: decodedBookmark, resolvedURL: nil)
+    }
+}
+
+// MARK: - ContentView
 
 struct ContentView: View {
+    // MARK: - Persistent Bookmark Storage Key
+    private let bookmarksKey = "persistedBookmarks"
+    
     // MARK: - State Properties
-    @State private var selectedFiles: [URL] = []
+    @State private var selectedFiles: [SelectedFile] = [] {
+        didSet { saveBookmarksToDefaults() }
+    }
     @State private var destinationFolderURL: URL? = nil
     @State private var isFileImporterPresented = false
     @State private var isAdditionalFileImporterPresented = false
@@ -21,11 +69,6 @@ struct ContentView: View {
         RenamingStep(type: .fileFormat(.none))
     ]
     
-    // Rename options...
-    @State private var prefix: String = ""
-    @State private var suffix: String = ""
-    @State private var findReplacePairs: [FindReplacePair] = [FindReplacePair()]
-    @State private var fileFormat: FileFormat = .none
     @State private var overwrite: Bool = false
     @State private var moveFiles: Bool = false
     @State private var thumbnailSizePreference: ThumbnailSize = .small
@@ -41,11 +84,15 @@ struct ContentView: View {
     @State private var newPresetName: String = ""
     @State private var presetActionError: String = ""
     @StateObject private var presetManager = PresetManager()
-        
+    @State private var showInspector: Bool = true
+    
+    // MARK: - New State for Bookmark Refresh Handling
+    /// Holds a SelectedFile that has a stale bookmark, requiring user to reauthorize access.
+    @State private var fileNeedingBookmarkRefresh: SelectedFile? = nil
+    
     // MARK: - Body
     var body: some View {
-        HSplitView {
-            // Left Side – File List & File Management
+        NavigationStack {  // Left Side – File List & File Management
             VStack(spacing: 16) {
                 HStack {
                     Text("File Preview")
@@ -82,28 +129,18 @@ struct ContentView: View {
                             allowedContentTypes: [.item],
                             allowsMultipleSelection: true
                         ) { result in
-                            switch result {
-                            case .success(let urls):
-                                let newFiles = urls.filter { !selectedFiles.contains($0) }
-                                if newFiles.isEmpty {
-                                    showToastMessage("No new files added.", isError: false)
-                                } else {
-                                    selectedFiles.append(contentsOf: newFiles)
-                                    showToastMessage("\(newFiles.count) files added.", isError: false)
-                                }
-                            case .failure(let error):
-                                showToastMessage("Error adding files: \(error.localizedDescription)", isError: true)
-                            }
+                            handleFileImport(result: result)
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.borderedProminent)
                         .keyboardShortcut(.defaultAction)
                     }
                     .padding(.bottom, 48)
                     .frame(maxHeight: .infinity)
                 } else {
                     List {
-                        ForEach(selectedFiles, id: \.self) { file in
-                            FileListItem(thumbnailSizePreference: thumbnailSizePreference, file: file, selectedFiles: $selectedFiles, processedFileName: processedFileName(for: file.lastPathComponent))
+                        ForEach(selectedFiles.indices, id: \.self) { idx in
+                            let file = selectedFiles[idx]
+                            FileListItem(thumbnailSizePreference: thumbnailSizePreference, file: file, selectedFiles: $selectedFiles, processedFileName: processedFileName(for: file.fileName, at: idx))
                         }
                         HStack {
                             Button("Add Files") {
@@ -114,18 +151,7 @@ struct ContentView: View {
                                 allowedContentTypes: [.item],
                                 allowsMultipleSelection: true
                             ) { result in
-                                switch result {
-                                case .success(let urls):
-                                    let newFiles = urls.filter { !selectedFiles.contains($0) }
-                                    if newFiles.isEmpty {
-                                        showToastMessage("No new files added.", isError: false)
-                                    } else {
-                                        selectedFiles.append(contentsOf: newFiles)
-                                        showToastMessage("\(newFiles.count) files added.", isError: false)
-                                    }
-                                case .failure(let error):
-                                    showToastMessage("Error adding files: \(error.localizedDescription)", isError: true)
-                                }
+                                handleFileImport(result: result)
                             }
                             .buttonStyle(.borderless)
                             .foregroundStyle(.blue)
@@ -143,54 +169,68 @@ struct ContentView: View {
                         Spacer()
                     }
                 }
+                
+                
             }
             .padding()
-            
-            // Right Side – Options & Save
+        }
+        .inspector(isPresented: $showInspector) {
             VStack(spacing: 16) {
-                Menu {
-                    if presetManager.presets.isEmpty {
-                        Text("No saved presets")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(presetManager.presets) { preset in
-                            Button(preset.name) {
-                                applyPreset(preset)
-                            }
+                HStack {
+                    Menu {
+                        Button("Find & Replace") {
+                            renamingSteps.append(RenamingStep(type: .findReplace(find: "", replace: "")))
                         }
-                        Divider()
+                        Button("Prefix") {
+                            renamingSteps.append(RenamingStep(type: .prefix("")))
+                        }
+                        Button("Suffix") {
+                            renamingSteps.append(RenamingStep(type: .suffix("")))
+                        }
+                        Button("Replace Filename") {
+                            renamingSteps.append(RenamingStep(type: .replaceFilenameWith("")))
+                        }
+                        Button("File Format") {
+                            renamingSteps.append(RenamingStep(type: .fileFormat(.none)))
+                        }
+                        Button("Sequential Numbering") {
+                            renamingSteps.append(RenamingStep(type: .sequentialNumbering(start: 1, minDigits: 3, position: .prefix)))
+                        }
+                    } label: {
+                        Label("Add Step", systemImage: "plus.circle")
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    Button("Save Current as Preset...") {
-                        showSavePresetDialog = true
+                    
+                    Spacer()
+                    Menu {
+                        if presetManager.presets.isEmpty {
+                            Text("No saved presets")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(presetManager.presets) { preset in
+                                Button(preset.name) {
+                                    applyPreset(preset)
+                                }
+                            }
+                            Divider()
+                        }
+                        Button("Save Current as Preset...") {
+                            showSavePresetDialog = true
+                        }
+                        Button("Manage Presets...") {
+                            showPresetManagementDialog = true
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "bookmark")
+                            Text("Presets")
+                        }
                     }
-                    Button("Manage Presets...") {
-                        showPresetManagementDialog = true
-                    }
-                } label: {
-                    HStack {
-                        Image(systemName: "bookmark")
-                        Text("Presets")
-                    }
+                    .buttonStyle(.borderedProminent)
                 }
-                .buttonStyle(.borderedProminent)
-                
                 RenamingStepsListView(renamingSteps: $renamingSteps)
                 
-                Menu("Add Step") {
-                    Button("Find & Replace") {
-                        renamingSteps.append(RenamingStep(type: .findReplace(find: "", replace: "")))
-                    }
-                    Button("Prefix") {
-                        renamingSteps.append(RenamingStep(type: .prefix("")))
-                    }
-                    Button("Suffix") {
-                        renamingSteps.append(RenamingStep(type: .suffix("")))
-                    }
-                    Button("File Format") {
-                        renamingSteps.append(RenamingStep(type: .fileFormat(.none)))
-                    }
-                }
-                .padding(.top, 4)
+                
                 
                 Spacer()
                 VStack(spacing: 8) {
@@ -233,13 +273,13 @@ struct ContentView: View {
                     }
                 }
                 .padding(12)
-                .background(Color(NSColor.controlBackgroundColor))
+                .background(.ultraThinMaterial)
                 .cornerRadius(6)
                 .formStyle(.grouped)
                 
                 if !selectedFiles.isEmpty {
-                HStack {
-                    Spacer()
+                    HStack {
+                        Spacer()
                         Button("Save Files") {
                             isFolderImporterPresented = true
                         }
@@ -263,12 +303,70 @@ struct ContentView: View {
                 }
             }
             .padding()
-            .frame(minWidth: 200, idealWidth: 250, maxWidth: 350, minHeight: 280)
-            .layoutPriority(0)
+            .inspectorColumnWidth(min: 400, ideal: 400, max: 400)
+            
+        }
+        // Sheet to prompt user to reselect file if bookmark is stale
+        .sheet(item: $fileNeedingBookmarkRefresh) { file in
+            VStack(spacing: 16) {
+                Text("Refresh Access to File")
+                    .font(.headline)
+                Text("Access to the file \"\(file.fileName)\" has expired or become invalid.\nPlease re-select the file to update its access permissions.")
+                    .multilineTextAlignment(.center)
+                    .padding()
+                Button("Re-select File") {
+                    // Use NSOpenPanel to re-select the file
+                    let panel = NSOpenPanel()
+                    panel.message = "Please select the file \"\(file.fileName)\" to refresh access permissions."
+                    panel.allowedContentTypes = [.item]
+                    panel.allowsMultipleSelection = false
+                    panel.canChooseDirectories = false
+                    panel.canChooseFiles = true
+                    panel.directoryURL = nil
+                    
+                    panel.begin { response in
+                        if response == .OK, let url = panel.url {
+                            if url.lastPathComponent == file.fileName {
+                                do {
+                                    // Create new bookmark data with security scope
+                                    let newBookmark = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
+                                    // Update the selectedFiles array with the new bookmark, preserving original ID
+                                    if let index = selectedFiles.firstIndex(where: { $0.id == file.id }) {
+                                        selectedFiles[index] = SelectedFile(id: file.id, fileName: file.fileName, bookmark: newBookmark)
+                                        showToastMessage("Access refreshed for \"\(file.fileName)\".", isError: false)
+                                    }
+                                } catch {
+                                    showToastMessage("Failed to create bookmark for \"\(file.fileName)\": \(error.localizedDescription)", isError: true)
+                                }
+                            } else {
+                                showToastMessage("Selected file does not match \"\(file.fileName)\".", isError: true)
+                            }
+                        } else {
+                            // User cancelled - not an error condition
+                            showToastMessage("File re-selection cancelled.", isError: false)
+                        }
+                        // Dismiss the sheet after attempt
+                        fileNeedingBookmarkRefresh = nil
+                    }
+                }
+                Button("Cancel") {
+                    fileNeedingBookmarkRefresh = nil
+                }
+                .keyboardShortcut(.cancelAction)
+            }
+            .padding()
+            .frame(width: 400)
         }
         .frame(minWidth: 800, minHeight: 580)
         .navigationTitle("FileScrubby")
-        .background(Color.clear)
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button(action: { showInspector.toggle() }) {
+                    Image(systemName: "list.bullet")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
         .overlay(
             ToastView(message: toastMessage, isError: toastIsError, showToast: $showToast)
                 .opacity(showToast ? 1 : 0)
@@ -312,10 +410,104 @@ struct ContentView: View {
         .sheet(isPresented: $showPresetManagementDialog) {
             PresetManagementView(presetManager: presetManager)
         }
+        // MARK: - Handle stale bookmark prompt outside save loop
+        // When fileNeedingBookmarkRefresh is set, prompt user to refresh bookmark asynchronously
+        .onChange(of: fileNeedingBookmarkRefresh) { _, file in
+            if let file = file {
+                DispatchQueue.main.async {
+                    regenerateBookmark(for: file)
+                }
+            }
+        }
+        .onAppear {
+            loadBookmarksFromDefaults()
+        }
+    }
+    
+    // MARK: - Persistent Bookmark Storage
+    
+    private func saveBookmarksToDefaults() {
+        do {
+            let encoded = try JSONEncoder().encode(selectedFiles)
+            UserDefaults.standard.set(encoded, forKey: bookmarksKey)
+        } catch {
+            print("Failed to save bookmarks: \(error)")
+        }
+    }
+    
+    private func loadBookmarksFromDefaults() {
+        guard let data = UserDefaults.standard.data(forKey: bookmarksKey) else { return }
+        do {
+            let decoded = try JSONDecoder().decode([SelectedFile].self, from: data)
+            selectedFiles = decoded
+        } catch {
+            print("Failed to load bookmarks: \(error)")
+        }
+    }
+    
+    // MARK: - File Import Handler
+    private func handleFileImport(result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            var newSelectedFiles: [SelectedFile] = []
+            var skippedCount = 0
+            
+            for url in urls {
+                // Start accessing the security-scoped resource first
+                let didStartAccessing = url.startAccessingSecurityScopedResource()
+                
+                do {
+                    // Create a security-scoped bookmark for sandboxed access
+                    let bookmark = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
+                    
+                    // Check for duplicates by comparing file paths (more reliable than bookmark comparison)
+                    let standardizedPath = url.standardized.path
+                    let isDuplicate = selectedFiles.contains { existingFile in
+                        // Try to resolve existing file's path and compare
+                        var isStale = false
+                        if let existingURL = try? URL(resolvingBookmarkData: existingFile.bookmark, 
+                                                     options: [.withoutUI], 
+                                                     relativeTo: nil, 
+                                                     bookmarkDataIsStale: &isStale) {
+                            return existingURL.standardized.path == standardizedPath
+                        }
+                        return false
+                    }
+                    
+                    if !isDuplicate {
+                        let selectedFile = SelectedFile(fileName: url.lastPathComponent, bookmark: bookmark)
+                        newSelectedFiles.append(selectedFile)
+                    } else {
+                        skippedCount += 1
+                    }
+                } catch {
+                    showToastMessage("Error creating bookmark for \(url.lastPathComponent): \(error.localizedDescription)", isError: true)
+                }
+                
+                // Stop accessing the security-scoped resource
+                if didStartAccessing {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+            
+            if newSelectedFiles.isEmpty && skippedCount > 0 {
+                showToastMessage("\(skippedCount) duplicate file(s) skipped.", isError: false)
+            } else if newSelectedFiles.isEmpty {
+                showToastMessage("No new files added.", isError: false)
+            } else {
+                selectedFiles.append(contentsOf: newSelectedFiles)
+                let message = skippedCount > 0 ? 
+                    "\(newSelectedFiles.count) files added, \(skippedCount) duplicates skipped." :
+                    "\(newSelectedFiles.count) file(s) added."
+                showToastMessage(message, isError: false)
+            }
+        case .failure(let error):
+            showToastMessage("Error adding files: \(error.localizedDescription)", isError: true)
+        }
     }
     
     // MARK: - Process Filename
-    func processedFileName(for original: String) -> String {
+    func processedFileName(for original: String, at index: Int) -> String {
         let ext = (original as NSString).pathExtension
         var baseName = (original as NSString).deletingPathExtension
         
@@ -340,6 +532,17 @@ struct ContentView: View {
                 case .none:
                     break
                 }
+            case .replaceFilenameWith(let value):
+                baseName = value
+            case .sequentialNumbering(let start, let minDigits, let position):
+                let number = start + index
+                let formattedNumber = String(format: "%0\(minDigits)d", number)
+                switch position {
+                case .prefix:
+                    baseName = formattedNumber + baseName
+                case .suffix:
+                    baseName = baseName + formattedNumber
+                }
             }
         }
         
@@ -356,10 +559,13 @@ struct ContentView: View {
             return
         }
         
+        // Access the folder with security scope for sandbox compliance
         let didStartAccessing = folder.startAccessingSecurityScopedResource()
-
+        
         defer {
-            if didStartAccessing { folder.stopAccessingSecurityScopedResource() }
+            if didStartAccessing {
+                folder.stopAccessingSecurityScopedResource()
+            }
         }
         
         guard didStartAccessing else {
@@ -367,23 +573,54 @@ struct ContentView: View {
             return
         }
         
-        var errorsOccurred = false
+        var successCount = 0
+        var errorCount = 0
         
-        for url in selectedFiles {
-            let originalName = url.lastPathComponent
-            let newName = processedFileName(for: originalName)
-            let finalDestinationURL: URL = overwrite
-                ? folder.appendingPathComponent(newName)
-                : uniqueDestinationURL(for: newName, in: folder)
+        for (index, selectedFile) in selectedFiles.enumerated() {
+            // Resolve URL from bookmark data and start security-scoped access
+            var resolvedURL: URL
+            var isStale: Bool
+            var accessStarted = false
             
-            let tempURL = folder.appendingPathComponent("temp_\(UUID().uuidString)_\(newName)")
-            
-            guard url.startAccessingSecurityScopedResource() else {
-                showToastMessage("Could not access file: \(originalName)", isError: true)
+            do {
+                let resolved = try selectedFile.resolvedSecurityScopedURL()
+                resolvedURL = resolved.url
+                isStale = resolved.isStale
+                accessStarted = true // Access was successfully started
+                
+                if isStale {
+                    // Handle stale bookmark by prompting user to reselect file and refresh bookmark
+                    resolvedURL.stopAccessingSecurityScopedResource()
+                    fileNeedingBookmarkRefresh = selectedFile
+                    errorCount += 1
+                    continue
+                }
+            } catch {
+                showToastMessage("Could not resolve file URL for: \(selectedFile.fileName)", isError: true)
+                errorCount += 1
                 continue
             }
+            
+            // Ensure that we stop accessing the security-scoped resource when done (only if access was started)
+            defer {
+                if accessStarted {
+                    resolvedURL.stopAccessingSecurityScopedResource()
+                }
+            }
+            
+            let originalName = selectedFile.fileName
+            let newName = processedFileName(for: originalName, at: index)
+            
+            // Determine final destination URL, handling overwrite option
+            let finalDestinationURL: URL = overwrite
+            ? folder.appendingPathComponent(newName)
+            : uniqueDestinationURL(for: newName, in: folder)
+            
+            // Use a temporary URL during copy/move operations to avoid partial file overwrites
+            let tempURL = folder.appendingPathComponent("temp_\(UUID().uuidString)_\(newName)")
+            
             do {
-                try FileManager.default.copyItem(at: url, to: tempURL)
+                try FileManager.default.copyItem(at: resolvedURL, to: tempURL)
                 
                 if overwrite, FileManager.default.fileExists(atPath: finalDestinationURL.path) {
                     try FileManager.default.trashItem(at: finalDestinationURL, resultingItemURL: nil)
@@ -392,22 +629,31 @@ struct ContentView: View {
                 try FileManager.default.moveItem(at: tempURL, to: finalDestinationURL)
                 
                 if moveFiles {
-                    try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+                    try FileManager.default.trashItem(at: resolvedURL, resultingItemURL: nil)
                 }
                 
+                successCount += 1
+                
             } catch {
-                errorsOccurred = true
+                errorCount += 1
                 showToastMessage("Error processing \(originalName): \(error.localizedDescription)", isError: true)
                 try? FileManager.default.removeItem(at: tempURL)
             }
-            url.stopAccessingSecurityScopedResource()
         }
         
-        if !errorsOccurred {
-            showToastMessage("Files processed successfully!", isError: false)
-        } else {
-            print("DEBUG: File save completed with errors.")
+        // Show appropriate completion message
+        if errorCount == 0 {
+            showToastMessage("All \(successCount) files processed successfully!", isError: false)
+            // Clear the file list after successful processing
+            selectedFiles = []
+        } else if successCount > 0 {
+            showToastMessage("\(successCount) files processed, \(errorCount) failed", isError: true)
+            // Remove successfully processed files from the list
+            // We need to track which files succeeded to remove them individually
+            // For now, clear all if some succeeded to avoid confusion
+            selectedFiles = []
         }
+        // If successCount is 0, individual error messages were already shown
     }
     
     // MARK: - Unique Destination URL Helper
@@ -468,281 +714,37 @@ struct ContentView: View {
         moveFiles = preset.moveFiles
         showToastMessage("Applied preset: \(preset.name)", isError: false)
     }
-}
-
-// MARK: - ToastView
-struct ToastView: View {
-    let message: String
-    let isError: Bool
-    @Binding var showToast: Bool
     
-    var body: some View {
-        HStack {
-            Text(message)
-            Button {
-                withAnimation { showToast = false }
-            } label: {
-                Image(systemName: "xmark.circle")
+    // MARK: - New Method to Regenerate Bookmark for a Selected File
+    /// Prompts the user to reauthorize access to a specific file that has a stale bookmark.
+    private func regenerateBookmark(for file: SelectedFile) {
+        // Use NSOpenPanel to prompt for file access
+        let panel = NSOpenPanel()
+        panel.message = "The app needs access to reauthorize: \(file.fileName)"
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedContentTypes = [.item]
+        panel.directoryURL = nil // Let user pick original location
+        
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else {
+                self.showToastMessage("File access was not reauthorized for \(file.fileName).", isError: true)
+                self.fileNeedingBookmarkRefresh = nil
+                return
             }
-            .buttonStyle(.borderless)
-            .focusEffectDisabled()
-            .frame(width: 16, height: 16)
-        }
-        .padding(.vertical, 8)
-        .padding(.leading, 16)
-        .padding(.trailing, 8)
-        .background(isError ? Color.red : Color.green)
-        .foregroundColor(.white)
-        .cornerRadius(8)
-        .padding(.top, 10)
-        .padding(8)
-    }
-}
-
-// MARK: - RenamingStepsListView
-struct RenamingStepsListView: View {
-    @Binding var renamingSteps: [RenamingStep]
-    @State private var draggingStep: RenamingStep?
-
-    var body: some View {
-        VStack(spacing: 8) {
-            ForEach($renamingSteps) { $step in
-                RenamingStepRow(
-                    step: $step,
-                    draggingStep: $draggingStep,
-                    removeAction: {
-                        if let index = renamingSteps.firstIndex(where: { $0.id == step.id }) {
-                            renamingSteps.remove(at: index)
-                        }
-                    }
-                )
-                .onDrag {
-                    self.draggingStep = step
-                    return NSItemProvider(object: step.id.uuidString as NSString)
+            do {
+                let newBookmark = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
+                // Update the bookmark in selectedFiles and persist
+                if let idx = self.selectedFiles.firstIndex(where: { $0.id == file.id }) {
+                    self.selectedFiles[idx] = SelectedFile(id: file.id, fileName: url.lastPathComponent, bookmark: newBookmark)
                 }
-                .onDrop(of: [.text], delegate: StepDropDelegate(item: step, steps: $renamingSteps, current: $draggingStep))
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                self.saveBookmarksToDefaults()
+                self.showToastMessage("Bookmark refreshed for \(file.fileName). Try renaming again.", isError: false)
+            } catch {
+                self.showToastMessage("Failed to refresh bookmark: \(error.localizedDescription)", isError: true)
             }
-        }
-        .listStyle(.plain)
-        .onChange(of: draggingStep) { newValue in
-            // If a drag is active, schedule a reset after 2 seconds.
-            if newValue != nil {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    if draggingStep != nil {
-                        draggingStep = nil
-                        print("DEBUG: Dragging state reset after timeout")
-                    }
-                }
-            }
-        }
-    }
-}
-
-struct RenamingStepRow: View {
-    @Binding var step: RenamingStep
-    @Binding var draggingStep: RenamingStep?
-    let removeAction: () -> Void
-    @State private var isHovering: Bool = false
-
-    var body: some View {
-        ZStack(alignment: .topTrailing) {
-            // Your row content:
-            HStack {
-                if isHovering {
-                    Image(systemName: "arrow.up.and.down.square.fill")
-                        .foregroundStyle(.tint)
-                } else {
-                    Image(systemName: "arrow.up.and.down.square.fill")
-                        .foregroundStyle(.tertiary)
-                }
-                switch step.type {
-                case .findReplace(let find, let replace):
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Find & Replace").font(.headline)
-                        HStack {
-                            TextField("Find", text: Binding(
-                                get: { find },
-                                set: { newValue in
-                                    step.type = .findReplace(find: newValue, replace: replace)
-                                }
-                            ))
-                            .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
-                            .padding(6)
-                            .background(Color(NSColor.quaternarySystemFill))
-                            .cornerRadius(6)
-                            TextField("Replace", text: Binding(
-                                get: { replace },
-                                set: { newValue in
-                                    step.type = .findReplace(find: find, replace: newValue)
-                                }
-                            ))
-                            .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
-                            .padding(6)
-                            .background(Color(NSColor.quaternarySystemFill))
-                            .cornerRadius(6)
-                        }
-                    }
-                case .prefix(let value):
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Prefix").font(.headline)
-                        TextField("Prefix", text: Binding(
-                            get: { value },
-                            set: { newValue in
-                                step.type = .prefix(newValue)
-                            }
-                        ))
-                        .padding(6)
-                        .background(Color(NSColor.quaternarySystemFill))
-                        .cornerRadius(6)
-                    }
-                    .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
-                case .suffix(let value):
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Suffix").font(.headline)
-                        TextField("Suffix", text: Binding(
-                            get: { value },
-                            set: { newValue in
-                                step.type = .suffix(newValue)
-                            }
-                        ))
-                        .padding(6)
-                        .background(Color(NSColor.quaternarySystemFill))
-                        .cornerRadius(6)
-                    }
-                    .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
-                case .fileFormat(let format):
-                    HStack(alignment: .top, spacing: 16) {
-                        Text("Format").font(.headline)
-                        HStack {
-                            Picker("Format", selection: Binding(
-                                get: {
-                                    if case let .fileFormat(currentFormat) = step.type {
-                                        return currentFormat
-                                    }
-                                    return .none
-                                },
-                                set: { newValue in
-                                    step.type = .fileFormat(newValue)
-                                }
-                            )) {
-                                ForEach(FileFormat.allCases, id: \.self) { format in
-                                    Text(format.displayName).tag(format)
-                                }
-                            }
-                            .pickerStyle(.radioGroup)
-                            .labelsHidden()
-                            Spacer()
-                        }
-                        .padding(6)
-                        .cornerRadius(6)
-                    }
-                    .onDrop(of: [UTType](), isTargeted: nil) { _ in false }
-                }
-                Spacer(minLength: 0)
-            }
-            .textFieldStyle(.plain)
-            .padding(.vertical, 8)
-            .padding(.leading, 8)
-            .padding(.trailing, 8)
-            .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(6)
-            
-            if isHovering {
-                Button(action: removeAction) {
-                    Image(systemName: "minus.circle.fill")
-                        .foregroundColor(.red)
-                }
-                .buttonStyle(.plain)
-                .padding(4)
-            }
-        }
-        // Set opacity to 0 if this step is currently being dragged.
-        .opacity(draggingStep?.id == step.id ? 0 : 1)
-        .onHover { hovering in
-            withAnimation { isHovering = hovering }
-        }
-    }
-}
-
-struct StepDropDelegate: DropDelegate {
-    let item: RenamingStep
-    @Binding var steps: [RenamingStep]
-    @Binding var current: RenamingStep?
-
-    func dropEntered(info: DropInfo) {
-        guard let current = current, current != item,
-              let fromIndex = steps.firstIndex(of: current),
-              let toIndex = steps.firstIndex(of: item)
-        else { return }
-
-        if steps[toIndex] != current {
-            withAnimation {
-                steps.move(fromOffsets: IndexSet(integer: fromIndex),
-                           toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex)
-            }
-        }
-    }
-
-    // Remove dropExited altogether.
-
-    func performDrop(info: DropInfo) -> Bool {
-        // Delay clearing slightly (0.3 seconds) so the drag preview fades.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            self.current = nil
-            print("DEBUG: Dragging state cleared in performDrop")
-        }
-        return true
-    }
-}
-
-// MARK: - FileThumbnailView
-struct FileThumbnailView: View {
-    let url: URL
-    let thumbnailSize: ThumbnailSize
-
-    @State private var thumbnailImage: NSImage? = nil
-
-    var body: some View {
-        Group {
-            if let thumbnailImage = thumbnailImage {
-                Image(nsImage: thumbnailImage)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: thumbnailSize.size.width, height: thumbnailSize.size.height)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                        )
-            } else {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(width: thumbnailSize.size.width, height: thumbnailSize.size.height)
-                    .overlay(ProgressView())
-            }
-        }
-        .onAppear {
-            loadThumbnail()
-        }
-    }
-
-    private func loadThumbnail() {
-        let scale = NSScreen.main?.backingScaleFactor ?? 2.0
-        let request = QLThumbnailGenerator.Request(fileAt: url,
-                                                   size: CGSize(width: 256, height: 256),
-                                                   scale: scale,
-                                                   representationTypes: .thumbnail)
-        QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { (thumbnail, error) in
-            if let thumbnail = thumbnail {
-                DispatchQueue.main.async {
-                    thumbnailImage = thumbnail.nsImage
-                    print("DEBUG: Thumbnail loaded for \(url.lastPathComponent)")
-                }
-            } else {
-                print("DEBUG: Error generating thumbnail for \(url.lastPathComponent): \(String(describing: error))")
-            }
+            self.fileNeedingBookmarkRefresh = nil
         }
     }
 }
@@ -753,48 +755,3 @@ struct FileThumbnailView: View {
         .frame(width: 800, height: 600)
 }
 
-struct FileListItem: View {
-    var thumbnailSizePreference: ThumbnailSize
-    var file: URL
-    @Binding var selectedFiles: [URL]
-    var processedFileName: String
-    @State private var isHovering: Bool = false
-    
-    var body: some View {
-        HStack(spacing: thumbnailSizePreference == .large ? 16 : 8) {
-            FileThumbnailView(url: file, thumbnailSize: thumbnailSizePreference)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-            HStack(spacing: 16) {
-                Text(file.lastPathComponent)
-                Spacer(minLength: 4)
-            }
-            HStack(spacing: 16) {
-                Image(systemName: "arrow.right")
-                Text(processedFileName)
-                    .foregroundColor(.secondary)
-                Spacer(minLength: 4)
-            }
-            HStack {
-                Spacer()
-                if isHovering {
-                    Button {
-                        if let index = selectedFiles.firstIndex(of: file) {
-                            selectedFiles.remove(at: index)
-                        }
-                    } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .foregroundColor(.red)
-                    }
-                    .buttonStyle(.borderless)
-                    .padding(4)
-                }
-            }
-            .frame(width: 32)
-        }
-        .padding(.vertical, 4)
-        .onHover { hovering in
-            withAnimation { isHovering = hovering }
-        }
-        
-    }
-}

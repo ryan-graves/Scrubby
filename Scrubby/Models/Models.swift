@@ -32,12 +32,27 @@ public enum FileFormat: String, Codable, CaseIterable {
     }
 }
 
+// MARK: - SequentialNumberPosition Enum
+public enum SequentialNumberPosition: String, Codable, CaseIterable, Equatable {
+    case prefix
+    case suffix
+    
+    public var displayName: String {
+        switch self {
+        case .prefix: return "Prefix"
+        case .suffix: return "Suffix"
+        }
+    }
+}
+
 // MARK: - RenamingStepType
 public enum RenamingStepType: Equatable {
     case findReplace(find: String, replace: String)
     case prefix(String)
     case suffix(String)
     case fileFormat(FileFormat)
+    case replaceFilenameWith(String)
+    case sequentialNumbering(start: Int, minDigits: Int, position: SequentialNumberPosition)
 }
 
 // MARK: - RenamingStep
@@ -58,11 +73,11 @@ extension RenamingStep: Codable {
     }
     
     enum StepTypeCodingKeys: String, CodingKey {
-        case kind, find, replace, value, format
+        case kind, find, replace, value, format, start, minDigits, position
     }
     
     enum StepKind: String, Codable {
-        case findReplace, prefix, suffix, fileFormat
+        case findReplace, prefix, suffix, fileFormat, replaceFilenameWith, sequentialNumbering
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -85,6 +100,14 @@ extension RenamingStep: Codable {
         case .fileFormat(let format):
             try typeContainer.encode(StepKind.fileFormat, forKey: .kind)
             try typeContainer.encode(format, forKey: .format)
+        case .replaceFilenameWith(let value):
+            try typeContainer.encode(StepKind.replaceFilenameWith, forKey: .kind)
+            try typeContainer.encode(value, forKey: .value)
+        case .sequentialNumbering(let start, let minDigits, let position):
+            try typeContainer.encode(StepKind.sequentialNumbering, forKey: .kind)
+            try typeContainer.encode(start, forKey: .start)
+            try typeContainer.encode(minDigits, forKey: .minDigits)
+            try typeContainer.encode(position, forKey: .position)
         }
     }
     
@@ -109,6 +132,14 @@ extension RenamingStep: Codable {
         case .fileFormat:
             let format = try typeContainer.decode(FileFormat.self, forKey: .format)
             type = .fileFormat(format)
+        case .replaceFilenameWith:
+            let value = try typeContainer.decode(String.self, forKey: .value)
+            type = .replaceFilenameWith(value)
+        case .sequentialNumbering:
+            let start = try typeContainer.decode(Int.self, forKey: .start)
+            let minDigits = try typeContainer.decode(Int.self, forKey: .minDigits)
+            let position = try typeContainer.decode(SequentialNumberPosition.self, forKey: .position)
+            type = .sequentialNumbering(start: start, minDigits: minDigits, position: position)
         }
     }
 }
@@ -179,3 +210,4 @@ public enum PresetError: Error, LocalizedError {
         }
     }
 }
+

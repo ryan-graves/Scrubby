@@ -1,0 +1,115 @@
+name: Auto Release on PR Merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+jobs:
+  auto-release:
+    # Only run if PR was actually merged (not just closed)
+    if: github.event.pull_request.merged == true
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Need full history to find previous tags
+
+    - name: Check for release label
+      id: check_label
+      run: |
+        # Check if PR has any release label
+        LABELS='${{ toJson(github.event.pull_request.labels.*.name) }}'
+        echo "Labels: $LABELS"
+
+        if echo "$LABELS" | grep -q "release:"; then
+          echo "has_release_label=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_release_label=false" >> $GITHUB_OUTPUT
+          echo "ℹ️  No release label found - skipping auto-release"
+        fi
+
+    - name: Determine version bump
+      if: steps.check_label.outputs.has_release_label == 'true'
+      id: version
+      run: |
+        # Get current version from latest git tag
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.1")
+        echo "Latest tag: $LATEST_TAG"
+
+        # Extract version and build number from tag
+        # Expected format: v1.2 or v1.2.0 (optionally with -build-11)
+        CURRENT_VERSION=$(echo "$LATEST_TAG" | sed 's/^v//' | sed 's/-build-.*//')
+        echo "Current version: $CURRENT_VERSION"
+
+        # Parse version parts (handle both 1.2 and 1.2.0 formats)
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+        PATCH=${PATCH:-0}  # Default to 0 if not present
+
+        echo "Parsed version: $MAJOR.$MINOR.$PATCH"
+
+        # Get current build number from appcast.xml as fallback
+        CURRENT_BUILD=$(grep -o 'sparkle:version>[0-9]*' Releases/appcast.xml | head -1 | sed 's/sparkle:version>//' || echo "10")
+        echo "Current build: $CURRENT_BUILD"
+
+        # Determine bump type from PR labels
+        LABELS='${{ toJson(github.event.pull_request.labels.*.name) }}'
+
+        if echo "$LABELS" | grep -q "release: major"; then
+          echo "🚀 Major release detected"
+          MAJOR=$((MAJOR + 1))
+          MINOR=0
+          PATCH=0
+        elif echo "$LABELS" | grep -q "release: minor"; then
+          echo "✨ Minor release detected"
+          MINOR=$((MINOR + 1))
+          PATCH=0
+        elif echo "$LABELS" | grep -q "release: patch"; then
+          echo "🐛 Patch release detected"
+          PATCH=$((PATCH + 1))
+        else
+          echo "❌ No valid release label found"
+          exit 1
+        fi
+
+        # Format version (use 1.2 for .0 patch, 1.2.1 for non-zero patch)
+        if [ "$PATCH" == "0" ]; then
+          NEW_VERSION="$MAJOR.$MINOR"
+        else
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+        fi
+
+        # Increment build number
+        NEW_BUILD=$((CURRENT_BUILD + 1))
+
+        echo "📦 New version: $NEW_VERSION (build $NEW_BUILD)"
+        echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "build=$NEW_BUILD" >> $GITHUB_OUTPUT
+
+    - name: Trigger release workflow
+      if: steps.check_label.outputs.has_release_label == 'true'
+      run: |
+        echo "🎯 Triggering release workflow..."
+        echo "   Version: ${{ steps.version.outputs.version }}"
+        echo "   Build: ${{ steps.version.outputs.build }}"
+
+        gh workflow run release.yml \
+          -f version=${{ steps.version.outputs.version }} \
+          -f build=${{ steps.version.outputs.build }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Comment on PR
+      if: steps.check_label.outputs.has_release_label == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '🚀 Auto-release triggered!\n\n- **Version:** ${{ steps.version.outputs.version }}\n- **Build:** ${{ steps.version.outputs.build }}\n\nCheck the [Actions tab](https://github.com/${{ github.repository }}/actions) to monitor the release progress.'
+          })
