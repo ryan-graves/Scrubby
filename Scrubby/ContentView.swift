@@ -342,7 +342,8 @@ struct ContentView: View {
                                 showToastMessage("Selected file does not match \"\(file.fileName)\".", isError: true)
                             }
                         } else {
-                            showToastMessage("File re-selection cancelled.", isError: true)
+                            // User cancelled - not an error condition
+                            showToastMessage("File re-selection cancelled.", isError: false)
                         }
                         // Dismiss the sheet after attempt
                         fileNeedingBookmarkRefresh = nil

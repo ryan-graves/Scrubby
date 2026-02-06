@@ -52,7 +52,7 @@ jobs:
         echo "Parsed version: $MAJOR.$MINOR.$PATCH"
 
         # Get current build number from appcast.xml as fallback
-        CURRENT_BUILD=$(grep -oP 'sparkle:version>\K\d+' Releases/appcast.xml | head -1 || echo "10")
+        CURRENT_BUILD=$(grep -o 'sparkle:version>[0-9]*' Releases/appcast.xml | head -1 | sed 's/sparkle:version>//' || echo "10")
         echo "Current build: $CURRENT_BUILD"
 
         # Determine bump type from PR labels
