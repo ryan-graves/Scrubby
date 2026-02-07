@@ -35,7 +35,9 @@ class BookmarkPersistenceService {
             return decoded
         } catch {
             // Log error but return empty array to allow app to continue
+            #if DEBUG
             print("Failed to load bookmarks: \(error)")
+            #endif
             return []
         }
     }

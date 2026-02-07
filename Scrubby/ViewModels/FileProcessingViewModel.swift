@@ -105,6 +105,7 @@ class FileProcessingViewModel: ObservableObject {
                     if let resolvedURL = try? URL(
                         resolvingBookmarkData: existingFile.bookmark,
                         options: .withoutUI,
+                        relativeTo: nil,
                         bookmarkDataIsStale: &isStale
                     ) {
                         return resolvedURL.standardized.path == standardizedPath

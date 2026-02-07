@@ -143,7 +143,7 @@ class BookmarkManager {
         do {
             _ = try URL(
                 resolvingBookmarkData: data,
-                options: [.withSecurityScope],
+                options: [.withSecurityScope, .withoutUI],
                 relativeTo: nil,
                 bookmarkDataIsStale: &isStale
             )

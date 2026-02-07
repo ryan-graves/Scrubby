@@ -430,7 +430,7 @@ Once the architecture refactoring is complete, these become much easier:
 
 ## 📝 Notes
 
-- All services use protocol-oriented design for testability
+- Services are concrete types (protocol extraction planned for future testing infrastructure)
 - ViewModels use `@MainActor` for thread safety
 - Async/await used for async operations (file import, processing)
 - Security-scoped bookmark lifecycle properly managed
