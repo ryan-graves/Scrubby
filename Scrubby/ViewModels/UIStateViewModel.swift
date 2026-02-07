@@ -19,6 +19,7 @@ class UIStateViewModel: ObservableObject {
     @Published var showToast: Bool = false
     @Published var toastMessage: String = ""
     @Published var toastIsError: Bool = false
+    private var toastDismissalTask: Task<Void, Never>?
     
     // MARK: - Form State
     
@@ -34,6 +35,9 @@ class UIStateViewModel: ObservableObject {
     ///   - message: The message to display
     ///   - isError: Whether this is an error message
     func showToastMessage(_ message: String, isError: Bool) {
+        // Cancel any existing dismissal task to prevent race condition
+        toastDismissalTask?.cancel()
+        
         toastMessage = message
         toastIsError = isError
         withAnimation {
@@ -41,7 +45,9 @@ class UIStateViewModel: ObservableObject {
         }
         
         // Auto-dismiss after 4 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+        toastDismissalTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled else { return }
             withAnimation {
                 self.showToast = false
             }
@@ -50,6 +56,7 @@ class UIStateViewModel: ObservableObject {
     
     /// Manually dismisses the toast
     func dismissToast() {
+        toastDismissalTask?.cancel()
         withAnimation {
             showToast = false
         }
