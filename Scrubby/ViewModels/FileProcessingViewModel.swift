@@ -60,7 +60,14 @@ class FileProcessingViewModel: ObservableObject {
         $selectedFiles
             .dropFirst() // Skip initial value
             .sink { [weak self] files in
-                try? self?.persistenceService.save(files)
+                do {
+                    try self?.persistenceService.save(files)
+                } catch {
+                    #if DEBUG
+                    print("⚠️ Failed to auto-save bookmarks: \(error.localizedDescription)")
+                    assertionFailure("Bookmark persistence failed: \(error)")
+                    #endif
+                }
             }
             .store(in: &cancellables)
     }
@@ -90,12 +97,17 @@ class FileProcessingViewModel: ObservableObject {
                 let bookmark = try BookmarkManager.createBookmark(for: url)
                 
                 // Check for duplicates by comparing file paths
+                // Use .withoutUI option to resolve without starting security-scoped access
                 let standardizedPath = url.standardized.path
                 let isDuplicate = selectedFiles.contains { existingFile in
+                    // Try to resolve bookmark without UI and without starting security access
                     var isStale = false
-                    if let resolved = try? BookmarkManager.resolveBookmark(existingFile.bookmark) {
-                        defer { resolved.stopAccessing() }
-                        return resolved.url.standardized.path == standardizedPath
+                    if let resolvedURL = try? URL(
+                        resolvingBookmarkData: existingFile.bookmark,
+                        options: .withoutUI,
+                        bookmarkDataIsStale: &isStale
+                    ) {
+                        return resolvedURL.standardized.path == standardizedPath
                     }
                     return false
                 }
@@ -152,84 +164,100 @@ class FileProcessingViewModel: ObservableObject {
     /// - Parameter destinationFolder: The folder to save files to
     /// - Returns: Processing result
     func processFiles(destinationFolder: URL) async -> FileProcessingResult {
-        // Start security-scoped access to destination folder
-        let didStartAccessing = destinationFolder.startAccessingSecurityScopedResource()
+        // Capture state on main thread before moving to background
+        let currentFiles = selectedFiles
+        let currentMoveFiles = moveFiles
+        let currentOverwrite = overwrite
+        let currentRenamingSteps = renamingSteps
         
-        defer {
-            if didStartAccessing {
-                destinationFolder.stopAccessingSecurityScopedResource()
+        // Perform file I/O on background thread
+        let result = await Task.detached {
+            // Start security-scoped access to destination folder
+            let didStartAccessing = destinationFolder.startAccessingSecurityScopedResource()
+            
+            defer {
+                if didStartAccessing {
+                    destinationFolder.stopAccessingSecurityScopedResource()
+                }
             }
-        }
-        
-        guard didStartAccessing else {
-            return FileProcessingResult(
-                successCount: 0,
-                errorCount: selectedFiles.count,
-                errors: [FileProcessingError(
-                    fileName: "destination folder",
-                    message: "Could not access folder permissions"
-                )]
-            )
-        }
-        
-        // Build array of (source URL, destination name) tuples
-        var filesToProcess: [(source: URL, destinationName: String)] = []
-        var resolutionErrors: [FileProcessingError] = []
-        
-        for (index, selectedFile) in selectedFiles.enumerated() {
-            do {
-                let resolved = try BookmarkManager.resolveBookmark(selectedFile.bookmark)
-                
-                if resolved.isStale {
-                    // Skip stale bookmarks - they need to be refreshed
+            
+            guard didStartAccessing else {
+                return FileProcessingResult(
+                    successCount: 0,
+                    errorCount: currentFiles.count,
+                    errors: [FileProcessingError(
+                        fileName: "destination folder",
+                        message: "Could not access folder permissions"
+                    )]
+                )
+            }
+            
+            // Build array of (source URL, destination name) tuples
+            var filesToProcess: [(source: URL, destinationName: String)] = []
+            var resolutionErrors: [FileProcessingError] = []
+            
+            for (index, selectedFile) in currentFiles.enumerated() {
+                do {
+                    let resolved = try BookmarkManager.resolveBookmark(selectedFile.bookmark)
+                    
+                    if resolved.isStale {
+                        // Skip stale bookmarks - they need to be refreshed
+                        resolutionErrors.append(FileProcessingError(
+                            fileName: selectedFile.fileName,
+                            message: "Bookmark is stale and needs to be refreshed"
+                        ))
+                        resolved.stopAccessing()
+                        continue
+                    }
+                    
+                    let newName = RenamingEngine.processFileName(
+                        selectedFile.fileName,
+                        at: index,
+                        with: currentRenamingSteps
+                    )
+                    filesToProcess.append((source: resolved.url, destinationName: newName))
+                    
+                    // Note: We don't call stopAccessing() here because the FileProcessingService
+                    // needs access to the URLs. We'll stop accessing after processing.
+                    
+                } catch {
                     resolutionErrors.append(FileProcessingError(
                         fileName: selectedFile.fileName,
-                        message: "Bookmark is stale and needs to be refreshed"
+                        message: "Could not resolve file URL: \(error.localizedDescription)"
                     ))
-                    resolved.stopAccessing()
-                    continue
                 }
-                
-                let newName = previewFileName(for: selectedFile, at: index)
-                filesToProcess.append((source: resolved.url, destinationName: newName))
-                
-                // Note: We don't call stopAccessing() here because the FileProcessingService
-                // needs access to the URLs. We'll stop accessing after processing.
-                
-            } catch {
-                resolutionErrors.append(FileProcessingError(
-                    fileName: selectedFile.fileName,
-                    message: "Could not resolve file URL: \(error.localizedDescription)"
-                ))
             }
-        }
-        
-        // Process the files
-        let operation: FileProcessingOperation = moveFiles ? .move : .copy
-        let collisionStrategy: FileCollisionStrategy = overwrite ? .overwrite : .uniqueName
-        
-        var result = fileProcessingService.processFiles(
-            files: filesToProcess,
-            destinationFolder: destinationFolder,
-            operation: operation,
-            collisionStrategy: collisionStrategy
-        )
-        
-        // Stop accessing all resolved URLs
-        for (sourceURL, _) in filesToProcess {
-            sourceURL.stopAccessingSecurityScopedResource()
-        }
-        
-        // Add resolution errors to the result
-        if !resolutionErrors.isEmpty {
-            result = FileProcessingResult(
-                successCount: result.successCount,
-                errorCount: result.errorCount + resolutionErrors.count,
-                errors: result.errors + resolutionErrors
+            
+            // Process the files
+            let operation: FileProcessingOperation = currentMoveFiles ? .move : .copy
+            let collisionStrategy: FileCollisionStrategy = currentOverwrite ? .overwrite : .uniqueName
+            let service = FileProcessingService()
+            
+            var result = service.processFiles(
+                files: filesToProcess,
+                destinationFolder: destinationFolder,
+                operation: operation,
+                collisionStrategy: collisionStrategy
             )
-        }
+            
+            // Stop accessing all resolved URLs
+            for (sourceURL, _) in filesToProcess {
+                sourceURL.stopAccessingSecurityScopedResource()
+            }
+            
+            // Add resolution errors to the result
+            if !resolutionErrors.isEmpty {
+                result = FileProcessingResult(
+                    successCount: result.successCount,
+                    errorCount: result.errorCount + resolutionErrors.count,
+                    errors: result.errors + resolutionErrors
+                )
+            }
+            
+            return result
+        }.value
         
-        // Clear files if all succeeded
+        // Clear files if all succeeded (back on main thread)
         if result.errorCount == 0 {
             clearFiles()
         }
