@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import UniformTypeIdentifiers
 
 /// Errors that can occur during bookmark operations
 enum BookmarkError: Error, LocalizedError {
@@ -94,7 +95,7 @@ class BookmarkManager {
     
     /// Handles stale bookmark by prompting user to reauthorize
     /// - Parameters:
-    ///   - oldBookmark: The stale bookmark data
+    ///   - oldBookmark: The stale bookmark data (used to set initial directory)
     ///   - fileName: The file name to show in the dialog
     /// - Returns: New bookmark data
     /// - Throws: BookmarkError if user cancels or refresh fails
@@ -107,7 +108,12 @@ class BookmarkManager {
             panel.canChooseDirectories = false
             panel.canChooseFiles = true
             panel.allowedContentTypes = [.item]
-            panel.directoryURL = nil
+            
+            // Try to resolve the old bookmark to set the initial directory for better UX
+            if let resolved = try? resolveBookmark(oldBookmark) {
+                panel.directoryURL = resolved.url.deletingLastPathComponent()
+                resolved.stopAccessing()
+            }
             
             panel.begin { response in
                 guard response == .OK, let url = panel.url else {
