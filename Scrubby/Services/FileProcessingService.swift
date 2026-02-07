@@ -66,6 +66,9 @@ class FileProcessingService {
         var errors: [FileProcessingError] = []
         
         for (sourceURL, destinationName) in files {
+            // Generate temp URL outside try block so it's accessible in catch
+            let tempURL = destinationFolder.appendingPathComponent("temp_\(UUID().uuidString)_\(destinationName)")
+            
             do {
                 // Determine final destination URL
                 let finalDestinationURL: URL
@@ -75,9 +78,6 @@ class FileProcessingService {
                 case .uniqueName:
                     finalDestinationURL = uniqueDestinationURL(for: destinationName, in: destinationFolder)
                 }
-                
-                // Use temporary file to avoid partial overwrites
-                let tempURL = destinationFolder.appendingPathComponent("temp_\(UUID().uuidString)_\(destinationName)")
                 
                 // Copy to temp location
                 try fileManager.copyItem(at: sourceURL, to: tempURL)
@@ -105,8 +105,7 @@ class FileProcessingService {
                     message: error.localizedDescription
                 ))
                 
-                // Clean up temp file if it exists
-                let tempURL = destinationFolder.appendingPathComponent("temp_\(UUID().uuidString)_\(destinationName)")
+                // Clean up temp file if it exists (using the same tempURL from above)
                 try? fileManager.removeItem(at: tempURL)
             }
         }
