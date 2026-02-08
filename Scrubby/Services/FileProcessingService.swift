@@ -95,16 +95,21 @@ class FileProcessingService {
                 // Copy to temp location
                 try fileManager.copyItem(at: sourceURL, to: tempURL)
                 
-                // If overwriting, trash the existing file first (but never the source)
-                if case .overwrite = collisionStrategy {
-                    if fileManager.fileExists(atPath: finalDestinationURL.path),
-                       standardizedDestination != standardizedSource {
-                        try fileManager.trashItem(at: finalDestinationURL, resultingItemURL: nil)
-                    }
+                // Move from temp to final location, handling overwrites atomically
+                if case .overwrite = collisionStrategy,
+                   fileManager.fileExists(atPath: finalDestinationURL.path),
+                   standardizedDestination != standardizedSource {
+                    // Atomically replace existing destination with temp file to prevent data loss
+                    _ = try fileManager.replaceItemAt(
+                        finalDestinationURL,
+                        withItemAt: tempURL,
+                        backupItemName: nil,
+                        options: []
+                    )
+                } else {
+                    // No existing destination (or unique name strategy) – simple move is safe
+                    try fileManager.moveItem(at: tempURL, to: finalDestinationURL)
                 }
-                
-                // Move from temp to final location
-                try fileManager.moveItem(at: tempURL, to: finalDestinationURL)
                 
                 // If move operation, trash the original (but never the destination)
                 // Use try? so trashing failure doesn't invalidate the already-completed move
