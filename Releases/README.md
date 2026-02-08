@@ -73,7 +73,7 @@ Add a new `<item>` to appcast.xml:
     <pubDate>Mon, 10 Feb 2025 12:00:00 -0600</pubDate>
     <sparkle:version>11</sparkle:version>
     <sparkle:shortVersionString>1.2</sparkle:shortVersionString>
-    <sparkle:minimumSystemVersion>15.2</sparkle:minimumSystemVersion>
+    <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
     <enclosure
         url="https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/FileScrubby-1.2.dmg"
         length="[SIZE_FROM_STEP_3]"
