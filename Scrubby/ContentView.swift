@@ -370,15 +370,7 @@ struct ContentView: View {
         .sheet(isPresented: $showPresetManagementDialog) {
             PresetManagementView(presetManager: presetManager)
         }
-        // MARK: - Handle stale bookmark prompt outside save loop
-        // When fileNeedingBookmarkRefresh is set, prompt user to refresh bookmark asynchronously
-        .onChange(of: fileNeedingBookmarkRefresh) { _, file in
-            if let file = file {
-                DispatchQueue.main.async {
-                    regenerateBookmark(for: file)
-                }
-            }
-        }
+
         .onAppear {
             loadBookmarksFromDefaults()
         }
@@ -674,39 +666,6 @@ struct ContentView: View {
         overwrite = preset.overwrite
         moveFiles = preset.moveFiles
         showToastMessage("Applied preset: \(preset.name)", isError: false)
-    }
-    
-    // MARK: - New Method to Regenerate Bookmark for a Selected File
-    /// Prompts the user to reauthorize access to a specific file that has a stale bookmark.
-    private func regenerateBookmark(for file: SelectedFile) {
-        // Use NSOpenPanel to prompt for file access
-        let panel = NSOpenPanel()
-        panel.message = "The app needs access to reauthorize: \(file.fileName)"
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.canChooseFiles = true
-        panel.allowedContentTypes = [.item]
-        panel.directoryURL = nil // Let user pick original location
-        
-        panel.begin { response in
-            guard response == .OK, let url = panel.url else {
-                self.showToastMessage("File access was not reauthorized for \(file.fileName).", isError: true)
-                self.fileNeedingBookmarkRefresh = nil
-                return
-            }
-            do {
-                let newBookmark = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
-                // Update the bookmark in selectedFiles and persist
-                if let idx = self.selectedFiles.firstIndex(where: { $0.id == file.id }) {
-                    self.selectedFiles[idx] = SelectedFile(id: file.id, fileName: url.lastPathComponent, bookmark: newBookmark)
-                }
-                self.saveBookmarksToDefaults()
-                self.showToastMessage("Bookmark refreshed for \(file.fileName). Try renaming again.", isError: false)
-            } catch {
-                self.showToastMessage("Failed to refresh bookmark: \(error.localizedDescription)", isError: true)
-            }
-            self.fileNeedingBookmarkRefresh = nil
-        }
     }
 }
 
