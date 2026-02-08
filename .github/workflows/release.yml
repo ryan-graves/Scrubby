@@ -55,7 +55,8 @@ jobs:
     - name: Generate appcast
       run: |
         cd Releases
-        generate_appcast --ed-key-file ../sparkle_key \
+        SPARKLE_BIN="$(brew --prefix sparkle)/bin"
+        "$SPARKLE_BIN/generate_appcast" --ed-key-file ../sparkle_key \
           --download-url-prefix "https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/main/Releases/" \
           .
 
