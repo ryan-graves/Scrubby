@@ -55,7 +55,8 @@ jobs:
     - name: Generate appcast
       run: |
         cd Releases
-        SPARKLE_BIN="$(brew --prefix sparkle)/bin"
+        SPARKLE_PREFIX="$(brew --prefix sparkle)" || { echo "Error: Sparkle is not installed or Homebrew cannot find it." >&2; exit 1; }
+        SPARKLE_BIN="$SPARKLE_PREFIX/bin"
         "$SPARKLE_BIN/generate_appcast" --ed-key-file ../sparkle_key \
           --download-url-prefix "https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/main/Releases/" \
           .
