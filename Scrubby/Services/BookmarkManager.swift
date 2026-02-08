@@ -8,6 +8,7 @@ enum BookmarkError: Error, LocalizedError {
     case accessDenied
     case creationFailed(String)
     case userCancelled
+    case filenameMismatch(expected: String, actual: String)
     
     var errorDescription: String? {
         switch self {
@@ -19,6 +20,8 @@ enum BookmarkError: Error, LocalizedError {
             return "Failed to create bookmark: \(details)"
         case .userCancelled:
             return "File selection was cancelled"
+        case .filenameMismatch(let expected, let actual):
+            return "Selected file \"\(actual)\" does not match expected file \"\(expected)\""
         }
     }
 }
@@ -125,6 +128,15 @@ class BookmarkManager {
             panel.begin { response in
                 guard response == .OK, let url = panel.url else {
                     continuation.resume(throwing: BookmarkError.userCancelled)
+                    return
+                }
+                
+                // Validate that user selected the correct file
+                if url.lastPathComponent != fileName {
+                    continuation.resume(throwing: BookmarkError.filenameMismatch(
+                        expected: fileName,
+                        actual: url.lastPathComponent
+                    ))
                     return
                 }
                 
