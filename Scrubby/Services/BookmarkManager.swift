@@ -30,7 +30,7 @@ enum BookmarkError: Error, LocalizedError {
 struct ResolvedBookmark {
     let url: URL
     let isStale: Bool
-    private var didStartAccessing: Bool
+    private let didStartAccessing: Bool
     
     init(url: URL, isStale: Bool, didStartAccessing: Bool) {
         self.url = url

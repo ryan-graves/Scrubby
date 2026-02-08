@@ -82,12 +82,23 @@ class FileProcessingService {
                     finalDestinationURL = uniqueDestinationURL(for: sanitizedName, in: destinationFolder)
                 }
                 
+                // Check if source and destination are the same file (in-place rename)
+                let standardizedSource = sourceURL.standardizedFileURL
+                let standardizedDestination = finalDestinationURL.standardizedFileURL
+                
+                if standardizedSource == standardizedDestination {
+                    // Skip processing - source and destination are identical
+                    successCount += 1
+                    continue
+                }
+                
                 // Copy to temp location
                 try fileManager.copyItem(at: sourceURL, to: tempURL)
                 
-                // If overwriting, trash the existing file first
+                // If overwriting, trash the existing file first (but never the source)
                 if case .overwrite = collisionStrategy {
-                    if fileManager.fileExists(atPath: finalDestinationURL.path) {
+                    if fileManager.fileExists(atPath: finalDestinationURL.path),
+                       standardizedDestination != standardizedSource {
                         try fileManager.trashItem(at: finalDestinationURL, resultingItemURL: nil)
                     }
                 }
@@ -95,8 +106,9 @@ class FileProcessingService {
                 // Move from temp to final location
                 try fileManager.moveItem(at: tempURL, to: finalDestinationURL)
                 
-                // If move operation, trash the original
-                if case .move = operation {
+                // If move operation, trash the original (but never the destination)
+                if case .move = operation,
+                   standardizedSource != standardizedDestination {
                     try fileManager.trashItem(at: sourceURL, resultingItemURL: nil)
                 }
                 
