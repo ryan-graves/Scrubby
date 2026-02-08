@@ -24,7 +24,9 @@ jobs:
         xcode-version: '26.2'
 
     - name: Install Sparkle tools
-      run: brew install sparkle
+      uses: jozefizso/setup-sparkle@v2
+      with:
+        version: 2.8.1
 
     - name: Build app
       run: |
@@ -55,8 +57,7 @@ jobs:
     - name: Generate appcast
       run: |
         cd Releases
-        GEN_APPCAST="$(command -v generate_appcast)" || { echo "Error: generate_appcast not found on PATH after installing Sparkle." >&2; exit 1; }
-        "$GEN_APPCAST" --ed-key-file ../sparkle_key \
+        generate_appcast --ed-key-file ../sparkle_key \
           --download-url-prefix "https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/main/Releases/" \
           .
 
