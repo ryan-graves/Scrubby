@@ -45,12 +45,13 @@ class UIStateViewModel: ObservableObject {
         }
         
         // Auto-dismiss after 4 seconds
-        toastDismissalTask = Task { @MainActor in
+        toastDismissalTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 4_000_000_000)
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, let self = self else { return }
             withAnimation {
                 self.showToast = false
             }
+            self.toastDismissalTask = nil
         }
     }
     

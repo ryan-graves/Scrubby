@@ -66,17 +66,20 @@ class FileProcessingService {
         var errors: [FileProcessingError] = []
         
         for (sourceURL, destinationName) in files {
+            // Sanitize destination name to prevent path traversal
+            let sanitizedName = sanitizeFileName(destinationName)
+            
             // Generate temp URL outside try block so it's accessible in catch
-            let tempURL = destinationFolder.appendingPathComponent("temp_\(UUID().uuidString)_\(destinationName)")
+            let tempURL = destinationFolder.appendingPathComponent("temp_\(UUID().uuidString)_\(sanitizedName)")
             
             do {
                 // Determine final destination URL
                 let finalDestinationURL: URL
                 switch collisionStrategy {
                 case .overwrite:
-                    finalDestinationURL = destinationFolder.appendingPathComponent(destinationName)
+                    finalDestinationURL = destinationFolder.appendingPathComponent(sanitizedName)
                 case .uniqueName:
-                    finalDestinationURL = uniqueDestinationURL(for: destinationName, in: destinationFolder)
+                    finalDestinationURL = uniqueDestinationURL(for: sanitizedName, in: destinationFolder)
                 }
                 
                 // Copy to temp location
@@ -115,6 +118,21 @@ class FileProcessingService {
             errorCount: errors.count,
             errors: errors
         )
+    }
+    
+    /// Sanitizes a filename by removing path separators and normalizing to a single path component
+    /// - Parameter fileName: The filename to sanitize
+    /// - Returns: A safe filename without path traversal characters
+    private func sanitizeFileName(_ fileName: String) -> String {
+        // Remove path separators and components like ".." that could traverse directories
+        let components = fileName.components(separatedBy: CharacterSet(charactersIn: "/\\:"))
+        let safeName = components.joined(separator: "_")
+        
+        // Remove leading dots to prevent hidden files or relative path issues
+        let trimmed = safeName.trimmingCharacters(in: CharacterSet(charactersIn: "."))
+        
+        // If empty after sanitization, use a fallback
+        return trimmed.isEmpty ? "file" : trimmed
     }
     
     /// Generates a unique destination URL by appending _1, _2, etc. if file exists

@@ -82,6 +82,21 @@ class FileProcessingViewModel: ObservableObject {
         var skippedCount = 0
         var errors: [String] = []
         
+        // Track standardized paths to detect duplicates within batch
+        var seenPaths = Set<String>()
+        // Initialize with existing files
+        for existingFile in selectedFiles {
+            var isStale = false
+            if let resolvedURL = try? URL(
+                resolvingBookmarkData: existingFile.bookmark,
+                options: .withoutUI,
+                relativeTo: nil,
+                bookmarkDataIsStale: &isStale
+            ) {
+                seenPaths.insert(resolvedURL.standardized.path)
+            }
+        }
+        
         for url in urls {
             // Start accessing the security-scoped resource first
             let didStartAccessing = url.startAccessingSecurityScopedResource()
@@ -96,29 +111,16 @@ class FileProcessingViewModel: ObservableObject {
                 // Create a security-scoped bookmark for sandboxed access
                 let bookmark = try BookmarkManager.createBookmark(for: url)
                 
-                // Check for duplicates by comparing file paths
-                // Use .withoutUI option to resolve without starting security-scoped access
+                // Check for duplicates using the Set of seen paths
                 let standardizedPath = url.standardized.path
-                let isDuplicate = selectedFiles.contains { existingFile in
-                    // Try to resolve bookmark without UI and without starting security access
-                    var isStale = false
-                    if let resolvedURL = try? URL(
-                        resolvingBookmarkData: existingFile.bookmark,
-                        options: .withoutUI,
-                        relativeTo: nil,
-                        bookmarkDataIsStale: &isStale
-                    ) {
-                        return resolvedURL.standardized.path == standardizedPath
-                    }
-                    return false
-                }
                 
-                if !isDuplicate {
+                if !seenPaths.contains(standardizedPath) {
                     let selectedFile = SelectedFile(
                         fileName: url.lastPathComponent,
                         bookmark: bookmark
                     )
                     newFiles.append(selectedFile)
+                    seenPaths.insert(standardizedPath)
                 } else {
                     skippedCount += 1
                 }
@@ -170,6 +172,7 @@ class FileProcessingViewModel: ObservableObject {
         let currentMoveFiles = moveFiles
         let currentOverwrite = overwrite
         let currentRenamingSteps = renamingSteps
+        let service = fileProcessingService
         
         // Perform file I/O on background thread
         let result = await Task.detached {
@@ -232,7 +235,6 @@ class FileProcessingViewModel: ObservableObject {
             // Process the files
             let operation: FileProcessingOperation = currentMoveFiles ? .move : .copy
             let collisionStrategy: FileCollisionStrategy = currentOverwrite ? .overwrite : .uniqueName
-            let service = FileProcessingService()
             
             var result = service.processFiles(
                 files: filesToProcess,
