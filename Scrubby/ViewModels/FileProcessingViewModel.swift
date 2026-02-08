@@ -260,8 +260,9 @@ class FileProcessingViewModel: ObservableObject {
             return result
         }.value
         
-        // Clear files if all succeeded (back on main thread)
-        if result.errorCount == 0 {
+        // Clear successfully processed files to avoid re-processing them
+        // If some failed, user can fix and retry just the failed ones
+        if result.successCount > 0 {
             clearFiles()
         }
         

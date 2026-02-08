@@ -8,6 +8,7 @@ enum BookmarkError: Error, LocalizedError {
     case staleBookmark
     case accessDenied
     case creationFailed(String)
+    case userCancelled
     
     var errorDescription: String? {
         switch self {
@@ -19,6 +20,8 @@ enum BookmarkError: Error, LocalizedError {
             return "Failed to start accessing security-scoped resource"
         case .creationFailed(let details):
             return "Failed to create bookmark: \(details)"
+        case .userCancelled:
+            return "File selection was cancelled"
         }
     }
 }
@@ -117,7 +120,7 @@ class BookmarkManager {
             
             panel.begin { response in
                 guard response == .OK, let url = panel.url else {
-                    continuation.resume(throwing: BookmarkError.resolutionFailed("User cancelled file selection"))
+                    continuation.resume(throwing: BookmarkError.userCancelled)
                     return
                 }
                 
