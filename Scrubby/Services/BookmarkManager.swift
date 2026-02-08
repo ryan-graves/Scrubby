@@ -5,7 +5,6 @@ import UniformTypeIdentifiers
 /// Errors that can occur during bookmark operations
 enum BookmarkError: Error, LocalizedError {
     case resolutionFailed(String)
-    case staleBookmark
     case accessDenied
     case creationFailed(String)
     case userCancelled
@@ -14,8 +13,6 @@ enum BookmarkError: Error, LocalizedError {
         switch self {
         case .resolutionFailed(let details):
             return "Failed to resolve bookmark: \(details)"
-        case .staleBookmark:
-            return "Bookmark is stale and needs to be refreshed"
         case .accessDenied:
             return "Failed to start accessing security-scoped resource"
         case .creationFailed(let details):
@@ -67,16 +64,23 @@ class BookmarkManager {
     }
     
     /// Resolves a security-scoped bookmark, starting access
-    /// - Parameter data: The bookmark data to resolve
+    /// - Parameters:
+    ///   - data: The bookmark data to resolve
+    ///   - allowUI: If true, allows system UI prompts for permission re-grants (use for user-initiated flows on main thread).
+    ///              If false, resolution fails silently without UI (use for background operations).
     /// - Returns: ResolvedBookmark with URL and staleness indicator
     /// - Throws: BookmarkError if resolution fails
-    static func resolveBookmark(_ data: Data) throws -> ResolvedBookmark {
+    static func resolveBookmark(_ data: Data, allowUI: Bool = false) throws -> ResolvedBookmark {
         var isStale = false
+        
+        let options: URL.BookmarkResolutionOptions = allowUI
+            ? [.withSecurityScope]
+            : [.withSecurityScope, .withoutUI]
         
         do {
             let url = try URL(
                 resolvingBookmarkData: data,
-                options: [.withSecurityScope, .withoutUI],
+                options: options,
                 relativeTo: nil,
                 bookmarkDataIsStale: &isStale
             )

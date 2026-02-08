@@ -543,7 +543,8 @@ struct ContentView: View {
             var accessStarted = false
             
             do {
-                let resolved = try BookmarkManager.resolveBookmark(selectedFile.bookmark)
+                // Allow UI for user-initiated flows so system can prompt for permission re-grants
+                let resolved = try BookmarkManager.resolveBookmark(selectedFile.bookmark, allowUI: true)
                 resolvedURL = resolved.url
                 isStale = resolved.isStale
                 accessStarted = true // Access was successfully started
