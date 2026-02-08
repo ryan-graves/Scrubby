@@ -146,11 +146,25 @@ class FileProcessingService {
         let components = fileName.components(separatedBy: CharacterSet(charactersIn: "/\\:"))
         let safeName = components.joined(separator: "_")
         
-        // Remove leading and trailing dots to prevent hidden files or relative path issues
-        let trimmed = safeName.trimmingCharacters(in: CharacterSet(charactersIn: "."))
+        // Split into basename and extension to sanitize them separately
+        let nsSafeName = safeName as NSString
+        var baseName = nsSafeName.deletingPathExtension
+        let ext = nsSafeName.pathExtension
         
-        // If empty after sanitization, use a fallback
-        return trimmed.isEmpty ? "file" : trimmed
+        // Remove leading and trailing dots from the basename to prevent hidden files
+        baseName = baseName.trimmingCharacters(in: CharacterSet(charactersIn: "."))
+        
+        // If basename is empty after sanitization, use a safe fallback
+        if baseName.isEmpty {
+            baseName = "file"
+        }
+        
+        // Reconstruct the filename, preserving the extension if present
+        if ext.isEmpty {
+            return baseName
+        } else {
+            return "\(baseName).\(ext)"
+        }
     }
     
     /// Generates a unique destination URL by appending _1, _2, etc. if file exists
