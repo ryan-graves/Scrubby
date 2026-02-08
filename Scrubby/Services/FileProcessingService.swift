@@ -128,7 +128,7 @@ class FileProcessingService {
         let components = fileName.components(separatedBy: CharacterSet(charactersIn: "/\\:"))
         let safeName = components.joined(separator: "_")
         
-        // Remove leading dots to prevent hidden files or relative path issues
+        // Remove leading and trailing dots to prevent hidden files or relative path issues
         let trimmed = safeName.trimmingCharacters(in: CharacterSet(charactersIn: "."))
         
         // If empty after sanitization, use a fallback

@@ -188,7 +188,7 @@ class FileProcessingViewModel: ObservableObject {
             guard didStartAccessing else {
                 return FileProcessingResult(
                     successCount: 0,
-                    errorCount: currentFiles.count,
+                    errorCount: 1,
                     errors: [FileProcessingError(
                         fileName: "destination folder",
                         message: "Could not access folder permissions"

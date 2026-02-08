@@ -58,6 +58,7 @@ class UIStateViewModel: ObservableObject {
     /// Manually dismisses the toast
     func dismissToast() {
         toastDismissalTask?.cancel()
+        toastDismissalTask = nil
         withAnimation {
             showToast = false
         }
