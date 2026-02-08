@@ -9,47 +9,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import AppKit
 
-struct SelectedFile: Identifiable, Equatable {
-    let id: UUID
-    let fileName: String
-    let bookmark: Data
-    var resolvedURL: URL? = nil
-    
-    init(id: UUID = UUID(), fileName: String, bookmark: Data, resolvedURL: URL? = nil) {
-        self.id = id
-        self.fileName = fileName
-        self.bookmark = bookmark
-        self.resolvedURL = resolvedURL
-    }
-    
-    /// Resolves the security-scoped URL from this file's bookmark, starting access. Returns (url, isStale) or throws.
-    func resolvedSecurityScopedURL() throws -> (url: URL, isStale: Bool) {
-        var isStale = false
-        let url = try URL(resolvingBookmarkData: bookmark, options: [.withSecurityScope], relativeTo: nil, bookmarkDataIsStale: &isStale)
-        let accessed = url.startAccessingSecurityScopedResource()
-        if !accessed {
-            throw NSError(domain: "SecurityScopedURL", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to start accessing security-scoped resource."])
-        }
-        return (url, isStale)
-    }
-}
-
-extension SelectedFile: Codable {
-    enum CodingKeys: String, CodingKey { case id, fileName, bookmark }
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
-        try container.encode(fileName, forKey: .fileName)
-        try container.encode(bookmark, forKey: .bookmark)
-    }
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let decodedId = try container.decode(UUID.self, forKey: .id)
-        let decodedFileName = try container.decode(String.self, forKey: .fileName)
-        let decodedBookmark = try container.decode(Data.self, forKey: .bookmark)
-        self.init(id: decodedId, fileName: decodedFileName, bookmark: decodedBookmark, resolvedURL: nil)
-    }
-}
+// SelectedFile has been moved to Scrubby/Models/Models.swift
 
 // MARK: - ContentView
 
@@ -410,15 +370,7 @@ struct ContentView: View {
         .sheet(isPresented: $showPresetManagementDialog) {
             PresetManagementView(presetManager: presetManager)
         }
-        // MARK: - Handle stale bookmark prompt outside save loop
-        // When fileNeedingBookmarkRefresh is set, prompt user to refresh bookmark asynchronously
-        .onChange(of: fileNeedingBookmarkRefresh) { _, file in
-            if let file = file {
-                DispatchQueue.main.async {
-                    regenerateBookmark(for: file)
-                }
-            }
-        }
+
         .onAppear {
             loadBookmarksFromDefaults()
         }
@@ -583,14 +535,15 @@ struct ContentView: View {
             var accessStarted = false
             
             do {
-                let resolved = try selectedFile.resolvedSecurityScopedURL()
+                // Allow UI for user-initiated flows so system can prompt for permission re-grants
+                let resolved = try BookmarkManager.resolveBookmark(selectedFile.bookmark, allowUI: true)
                 resolvedURL = resolved.url
                 isStale = resolved.isStale
                 accessStarted = true // Access was successfully started
                 
                 if isStale {
                     // Handle stale bookmark by prompting user to reselect file and refresh bookmark
-                    resolvedURL.stopAccessingSecurityScopedResource()
+                    resolved.stopAccessing()
                     fileNeedingBookmarkRefresh = selectedFile
                     errorCount += 1
                     continue
@@ -713,39 +666,6 @@ struct ContentView: View {
         overwrite = preset.overwrite
         moveFiles = preset.moveFiles
         showToastMessage("Applied preset: \(preset.name)", isError: false)
-    }
-    
-    // MARK: - New Method to Regenerate Bookmark for a Selected File
-    /// Prompts the user to reauthorize access to a specific file that has a stale bookmark.
-    private func regenerateBookmark(for file: SelectedFile) {
-        // Use NSOpenPanel to prompt for file access
-        let panel = NSOpenPanel()
-        panel.message = "The app needs access to reauthorize: \(file.fileName)"
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.canChooseFiles = true
-        panel.allowedContentTypes = [.item]
-        panel.directoryURL = nil // Let user pick original location
-        
-        panel.begin { response in
-            guard response == .OK, let url = panel.url else {
-                self.showToastMessage("File access was not reauthorized for \(file.fileName).", isError: true)
-                self.fileNeedingBookmarkRefresh = nil
-                return
-            }
-            do {
-                let newBookmark = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
-                // Update the bookmark in selectedFiles and persist
-                if let idx = self.selectedFiles.firstIndex(where: { $0.id == file.id }) {
-                    self.selectedFiles[idx] = SelectedFile(id: file.id, fileName: url.lastPathComponent, bookmark: newBookmark)
-                }
-                self.saveBookmarksToDefaults()
-                self.showToastMessage("Bookmark refreshed for \(file.fileName). Try renaming again.", isError: false)
-            } catch {
-                self.showToastMessage("Failed to refresh bookmark: \(error.localizedDescription)", isError: true)
-            }
-            self.fileNeedingBookmarkRefresh = nil
-        }
     }
 }
 
