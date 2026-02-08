@@ -89,7 +89,7 @@ class FileProcessingViewModel: ObservableObject {
             var isStale = false
             if let resolvedURL = try? URL(
                 resolvingBookmarkData: existingFile.bookmark,
-                options: .withoutUI,
+                options: [.withSecurityScope, .withoutUI],
                 relativeTo: nil,
                 bookmarkDataIsStale: &isStale
             ) {
