@@ -9,47 +9,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import AppKit
 
-struct SelectedFile: Identifiable, Equatable {
-    let id: UUID
-    let fileName: String
-    let bookmark: Data
-    var resolvedURL: URL? = nil
-    
-    init(id: UUID = UUID(), fileName: String, bookmark: Data, resolvedURL: URL? = nil) {
-        self.id = id
-        self.fileName = fileName
-        self.bookmark = bookmark
-        self.resolvedURL = resolvedURL
-    }
-    
-    /// Resolves the security-scoped URL from this file's bookmark, starting access. Returns (url, isStale) or throws.
-    func resolvedSecurityScopedURL() throws -> (url: URL, isStale: Bool) {
-        var isStale = false
-        let url = try URL(resolvingBookmarkData: bookmark, options: [.withSecurityScope], relativeTo: nil, bookmarkDataIsStale: &isStale)
-        let accessed = url.startAccessingSecurityScopedResource()
-        if !accessed {
-            throw NSError(domain: "SecurityScopedURL", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to start accessing security-scoped resource."])
-        }
-        return (url, isStale)
-    }
-}
-
-extension SelectedFile: Codable {
-    enum CodingKeys: String, CodingKey { case id, fileName, bookmark }
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
-        try container.encode(fileName, forKey: .fileName)
-        try container.encode(bookmark, forKey: .bookmark)
-    }
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let decodedId = try container.decode(UUID.self, forKey: .id)
-        let decodedFileName = try container.decode(String.self, forKey: .fileName)
-        let decodedBookmark = try container.decode(Data.self, forKey: .bookmark)
-        self.init(id: decodedId, fileName: decodedFileName, bookmark: decodedBookmark, resolvedURL: nil)
-    }
-}
+// SelectedFile has been moved to Scrubby/Models/Models.swift
 
 // MARK: - ContentView
 
@@ -583,14 +543,14 @@ struct ContentView: View {
             var accessStarted = false
             
             do {
-                let resolved = try selectedFile.resolvedSecurityScopedURL()
+                let resolved = try BookmarkManager.resolveBookmark(selectedFile.bookmark)
                 resolvedURL = resolved.url
                 isStale = resolved.isStale
                 accessStarted = true // Access was successfully started
                 
                 if isStale {
                     // Handle stale bookmark by prompting user to reselect file and refresh bookmark
-                    resolvedURL.stopAccessingSecurityScopedResource()
+                    resolved.stopAccessing()
                     fileNeedingBookmarkRefresh = selectedFile
                     errorCount += 1
                     continue

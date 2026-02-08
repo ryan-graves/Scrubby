@@ -107,9 +107,10 @@ class FileProcessingService {
                 try fileManager.moveItem(at: tempURL, to: finalDestinationURL)
                 
                 // If move operation, trash the original (but never the destination)
+                // Use try? so trashing failure doesn't invalidate the already-completed move
                 if case .move = operation,
                    standardizedSource != standardizedDestination {
-                    try fileManager.trashItem(at: sourceURL, resultingItemURL: nil)
+                    try? fileManager.trashItem(at: sourceURL, resultingItemURL: nil)
                 }
                 
                 successCount += 1

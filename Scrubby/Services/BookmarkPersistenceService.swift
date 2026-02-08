@@ -34,10 +34,11 @@ class BookmarkPersistenceService {
             let decoded = try JSONDecoder().decode([SelectedFile].self, from: data)
             return decoded
         } catch {
-            // Log error but return empty array to allow app to continue
+            // Clear corrupted data so app can recover cleanly on next launch
             #if DEBUG
-            print("Failed to load bookmarks: \(error)")
+            print("Failed to load bookmarks: \(error). Clearing corrupted data.")
             #endif
+            userDefaults.removeObject(forKey: userDefaultsKey)
             return []
         }
     }

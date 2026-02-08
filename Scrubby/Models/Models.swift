@@ -211,3 +211,16 @@ public enum PresetError: Error, LocalizedError {
     }
 }
 
+// MARK: - SelectedFile
+public struct SelectedFile: Identifiable, Equatable, Codable {
+    public let id: UUID
+    public let fileName: String
+    public let bookmark: Data
+    
+    public init(id: UUID = UUID(), fileName: String, bookmark: Data) {
+        self.id = id
+        self.fileName = fileName
+        self.bookmark = bookmark
+    }
+}
+
