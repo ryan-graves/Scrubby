@@ -35,7 +35,7 @@ jobs:
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
-          MACOSX_DEPLOYMENT_TARGET=15.2 \
+          MACOSX_DEPLOYMENT_TARGET=26.0 \
           clean build
 
     - name: Create DMG
@@ -55,7 +55,8 @@ jobs:
     - name: Generate appcast
       run: |
         cd Releases
-        generate_appcast --ed-key-file ../sparkle_key \
+        GEN_APPCAST="$(command -v generate_appcast)" || { echo "Error: generate_appcast not found on PATH after installing Sparkle." >&2; exit 1; }
+        "$GEN_APPCAST" --ed-key-file ../sparkle_key \
           --download-url-prefix "https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/main/Releases/" \
           .
 
