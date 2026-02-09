@@ -13,6 +13,8 @@ on:
 jobs:
   build-and-release:
     runs-on: macos-26
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -52,7 +54,8 @@ jobs:
 
       - name: Setup Sparkle private key
         run: |
-          echo "${{ secrets.SPARKLE_PRIVATE_KEY }}" > sparkle_key
+          umask 077
+          printf '%s' "${{ secrets.SPARKLE_PRIVATE_KEY }}" > sparkle_key
 
       - name: Generate appcast
         run: |
@@ -79,7 +82,7 @@ jobs:
           git push origin main
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@26994186c0ac3ef5cae75ac16aa32e8153525f77 # v1
         with:
           tag_name: v${{ github.event.inputs.version }}
           name: FileScrubby ${{ github.event.inputs.version }}
