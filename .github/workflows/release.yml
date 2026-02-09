@@ -30,19 +30,6 @@ jobs:
         with:
           version: 2.8.1
 
-      - name: Update version numbers
-        run: |
-          # Update marketing version (CFBundleShortVersionString)
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ github.event.inputs.version }}" Scrubby/Info.plist
-
-          # Update build number (CFBundleVersion)
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.event.inputs.build }}" Scrubby/Info.plist
-
-          # Verify the changes
-          echo "Updated version info:"
-          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Scrubby/Info.plist
-          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" Scrubby/Info.plist
-
       - name: Install Developer ID certificate
         env:
           DEVELOPER_ID_CERT_BASE64: ${{ secrets.DEVELOPER_ID_CERT_BASE64 }}
@@ -90,7 +77,25 @@ jobs:
             CODE_SIGN_IDENTITY="Developer ID Application" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             MACOSX_DEPLOYMENT_TARGET=26.0 \
+            MARKETING_VERSION="${{ github.event.inputs.version }}" \
+            CURRENT_PROJECT_VERSION="${{ github.event.inputs.build }}" \
             clean build
+
+      - name: Verify build version
+        run: |
+          echo "Verifying build version..."
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" build/Build/Products/Release/FileScrubby.app/Contents/Info.plist)
+          BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" build/Build/Products/Release/FileScrubby.app/Contents/Info.plist)
+          echo "Built app version: $VERSION (build $BUILD)"
+          if [ "$VERSION" != "${{ github.event.inputs.version }}" ]; then
+            echo "Error: Version mismatch! Expected ${{ github.event.inputs.version }}, got $VERSION"
+            exit 1
+          fi
+          if [ "$BUILD" != "${{ github.event.inputs.build }}" ]; then
+            echo "Error: Build number mismatch! Expected ${{ github.event.inputs.build }}, got $BUILD"
+            exit 1
+          fi
+          echo "Version check passed!"
 
       - name: Verify code signature
         run: |
