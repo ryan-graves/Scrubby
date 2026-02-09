@@ -173,6 +173,9 @@ class FileProcessingViewModel: ObservableObject {
         let currentRenamingSteps = renamingSteps
         let service = fileProcessingService
         
+        // Pre-compile regex steps for batch efficiency
+        let compiledRegex = RenamingEngine.compileRegexSteps(currentRenamingSteps)
+        
         // Resolve bookmarks on main thread with allowUI: true for user-initiated flows
         // This allows system UI prompts for permission re-grants
         var filesToProcess: [(source: URL, destinationName: String, fileId: UUID)] = []
@@ -198,7 +201,8 @@ class FileProcessingViewModel: ObservableObject {
                 let newName = RenamingEngine.processFileName(
                     selectedFile.fileName,
                     at: index,
-                    with: currentRenamingSteps
+                    with: currentRenamingSteps,
+                    compiledRegex: compiledRegex
                 )
                 filesToProcess.append((source: resolved.url, destinationName: newName, fileId: selectedFile.id))
                 

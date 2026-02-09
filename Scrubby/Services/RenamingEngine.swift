@@ -1,14 +1,42 @@
 import Foundation
 
+/// Holds a pre-compiled regex and its replacement template for efficient batch processing
+struct CompiledRegexStep {
+    let regex: NSRegularExpression
+    let replacement: String
+    let captureGroupCount: Int
+}
+
 /// Pure business logic for applying renaming steps to filenames
 struct RenamingEngine {
+    
+    /// Pre-compiles regex steps for efficient batch processing
+    /// - Parameter steps: Array of renaming steps
+    /// - Returns: Dictionary mapping step IDs to compiled regex info (only for valid regex steps)
+    static func compileRegexSteps(_ steps: [RenamingStep]) -> [UUID: CompiledRegexStep] {
+        var compiled: [UUID: CompiledRegexStep] = [:]
+        for step in steps {
+            if case .findReplace(let find, _, let isRegex) = step.type, isRegex, !find.isEmpty {
+                if let regex = try? NSRegularExpression(pattern: find, options: [.caseInsensitive]) {
+                    compiled[step.id] = CompiledRegexStep(
+                        regex: regex,
+                        replacement: "",  // Will use actual replacement at call time
+                        captureGroupCount: regex.numberOfCaptureGroups
+                    )
+                }
+            }
+        }
+        return compiled
+    }
+    
     /// Applies all renaming steps to a filename at a given index
     /// - Parameters:
     ///   - original: The original filename
     ///   - index: The index of this file in the batch (used for sequential numbering)
     ///   - steps: Array of renaming steps to apply sequentially
+    ///   - compiledRegex: Optional pre-compiled regex cache for batch processing
     /// - Returns: The transformed filename
-    static func processFileName(_ original: String, at index: Int, with steps: [RenamingStep]) -> String {
+    static func processFileName(_ original: String, at index: Int, with steps: [RenamingStep], compiledRegex: [UUID: CompiledRegexStep]? = nil) -> String {
         let ext = (original as NSString).pathExtension
         var baseName = (original as NSString).deletingPathExtension
         
@@ -17,7 +45,12 @@ struct RenamingEngine {
             case .findReplace(let find, let replace, let isRegex):
                 if !find.isEmpty {
                     if isRegex {
-                        baseName = applyRegexReplacement(pattern: find, replacement: replace, to: baseName)
+                        baseName = applyRegexReplacement(
+                            pattern: find,
+                            replacement: replace,
+                            to: baseName,
+                            compiledRegex: compiledRegex?[step.id]
+                        )
                     } else {
                         baseName = baseName.replacingOccurrences(of: find, with: replace, options: .caseInsensitive)
                     }
@@ -62,15 +95,70 @@ struct RenamingEngine {
     ///   - pattern: The regex pattern to match
     ///   - replacement: The replacement string (supports $1, $2 etc. for capture groups)
     ///   - input: The input string to transform
-    /// - Returns: The transformed string, or original if regex is invalid
-    private static func applyRegexReplacement(pattern: String, replacement: String, to input: String) -> String {
-        do {
-            let regex = try NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
-            let range = NSRange(input.startIndex..., in: input)
-            return regex.stringByReplacingMatches(in: input, options: [], range: range, withTemplate: replacement)
-        } catch {
-            // If regex is invalid, return the original string unchanged
+    ///   - compiledRegex: Optional pre-compiled regex for batch efficiency
+    /// - Returns: The transformed string, or original if regex or template is invalid
+    private static func applyRegexReplacement(pattern: String, replacement: String, to input: String, compiledRegex: CompiledRegexStep? = nil) -> String {
+        let regex: NSRegularExpression
+        let captureGroupCount: Int
+        
+        if let compiled = compiledRegex {
+            // Use pre-compiled regex for efficiency
+            regex = compiled.regex
+            captureGroupCount = compiled.captureGroupCount
+        } else {
+            // Compile regex on-demand (for single file or preview)
+            do {
+                regex = try NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
+                captureGroupCount = regex.numberOfCaptureGroups
+            } catch {
+                // If regex is invalid, return the original string unchanged
+                return input
+            }
+        }
+        
+        // Validate that replacement template doesn't reference non-existent capture groups
+        // to avoid Objective-C exceptions from stringByReplacingMatches
+        if !isValidReplacementTemplate(replacement, captureGroupCount: captureGroupCount) {
             return input
         }
+        
+        let range = NSRange(input.startIndex..., in: input)
+        return regex.stringByReplacingMatches(in: input, options: [], range: range, withTemplate: replacement)
+    }
+    
+    /// Validates that all `$n` references in the replacement template refer to existing capture groups.
+    /// This prevents `NSRegularExpression` from raising Objective-C exceptions for invalid templates.
+    /// - Parameters:
+    ///   - template: The replacement template string
+    ///   - captureGroupCount: The number of capture groups in the regex pattern
+    /// - Returns: true if the template is valid, false otherwise
+    private static func isValidReplacementTemplate(_ template: String, captureGroupCount: Int) -> Bool {
+        var i = template.startIndex
+        while i < template.endIndex {
+            let char = template[i]
+            if char == "$" {
+                let nextIndex = template.index(after: i)
+                // Check if followed by a digit (capture group reference)
+                if nextIndex < template.endIndex, let firstDigit = template[nextIndex].wholeNumberValue {
+                    // Parse the full number
+                    var groupNumber = firstDigit
+                    var j = template.index(after: nextIndex)
+                    while j < template.endIndex, let digit = template[j].wholeNumberValue {
+                        groupNumber = groupNumber * 10 + digit
+                        j = template.index(after: j)
+                    }
+                    
+                    // $0 refers to entire match (always valid), $1+ must be within capture group count
+                    if groupNumber > captureGroupCount {
+                        return false
+                    }
+                    
+                    i = j
+                    continue
+                }
+            }
+            i = template.index(after: i)
+        }
+        return true
     }
 }

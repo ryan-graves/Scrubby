@@ -262,6 +262,32 @@ struct RenamingEngineTests {
             #expect(Bool(false), "Expected findReplace type")
         }
     }
+    
+    @Test("RenamingEngine regex handles invalid replacement template gracefully")
+    func testRegexInvalidReplacementTemplate() async throws {
+        // Pattern has 1 capture group, but template references $2 which doesn't exist
+        let steps = [RenamingStep(type: .findReplace(find: "(\\w+)", replace: "$2", isRegex: true))]
+        let result = RenamingEngine.processFileName("hello.txt", at: 0, with: steps)
+        // Should return unchanged filename since template is invalid
+        #expect(result == "hello.txt")
+    }
+    
+    @Test("RenamingEngine regex allows $0 for full match")
+    func testRegexFullMatchReference() async throws {
+        // $0 refers to the entire match and should always be valid
+        let steps = [RenamingStep(type: .findReplace(find: "\\w+", replace: "[$0]", isRegex: true))]
+        let result = RenamingEngine.processFileName("hello.txt", at: 0, with: steps)
+        #expect(result == "[hello].txt")
+    }
+    
+    @Test("RenamingEngine regex handles multi-digit capture group references")
+    func testRegexMultiDigitCaptureGroup() async throws {
+        // Template with $10 should be invalid if there aren't 10 capture groups
+        let steps = [RenamingStep(type: .findReplace(find: "(a)(b)", replace: "$10", isRegex: true))]
+        let result = RenamingEngine.processFileName("ab.txt", at: 0, with: steps)
+        // Should return unchanged since $10 doesn't exist (only 2 capture groups)
+        #expect(result == "ab.txt")
+    }
 }
 
 // MARK: - String Extension Tests
