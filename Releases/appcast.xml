@@ -9,33 +9,6 @@
             <sparkle:shortVersionString>1.2</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
             <enclosure url="https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/FileScrubby-1.2.dmg" length="3538462" type="application/octet-stream" sparkle:edSignature="dWS0GXMF4FWzqSxWqTRui8PDWi72TZ/fma1XBS2Se4DWFy5NqkKBYLvi8Ttz+VfjqbV9ePQn0qu5o1eueLmbDw=="/>
-            <sparkle:deltas>
-                <enclosure url="https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/FileScrubby11-10.delta" sparkle:deltaFrom="10" length="1487434" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="846480" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,en" sparkle:edSignature="vj6cFmcd7aqNofxs+pGz/Cs0IvG5j+ZFbjyxIZ/Kp1NyBjsgs0Cyt61C0esqfwxjnu1UANs374gygWxevVhRAA=="/>
-            </sparkle:deltas>
-        </item>
-        <item>
-            <title>1.1</title>
-            <pubDate>Sat, 07 Jun 2025 19:59:30 -0500</pubDate>
-            <sparkle:version>10</sparkle:version>
-            <sparkle:shortVersionString>1.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>15.2</sparkle:minimumSystemVersion>
-            <enclosure url="https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/FileScrubby.dmg" length="2220651" type="application/octet-stream" sparkle:edSignature="H+PLDWvAhDbIcvOO6cc28RmTa6C8teyMv9ULSNsowkSBEBfX6EoXwJGD49u7fCwoRWvNMObthH26P1H8ZcXgBQ=="/>
-        </item>
-        <item>
-            <title>1.0</title>
-            <pubDate>Sun, 02 Mar 2025 13:43:18 -0600</pubDate>
-            <sparkle:version>9</sparkle:version>
-            <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>15.2</sparkle:minimumSystemVersion>
-            <enclosure url="https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/FileScrubby.dmg" length="5605152" type="application/octet-stream" sparkle:edSignature="12Dq/McNUyWI3F22gzrYuvq0heYGoCjW8CXB1p93KyiEylC3HLFIuotq/U9JhEBiVHqwJujE+xoerhg6ZniaBg=="/>
-        </item>
-        <item>
-            <title>1.0</title>
-            <pubDate>Sun, 02 Mar 2025 13:24:02 -0600</pubDate>
-            <sparkle:version>8</sparkle:version>
-            <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>15.2</sparkle:minimumSystemVersion>
-            <enclosure url="https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/FileScrubby.dmg" length="5523232" type="application/octet-stream" sparkle:edSignature="v7v6ArhvGVQidokBKjgLawI9ynEk898nlYtwcB/jq15Yud45ado7jL7+c6eecN2HSm95gRxfQMocaaLAVu61Bg=="/>
         </item>
     </channel>
 </rss>
