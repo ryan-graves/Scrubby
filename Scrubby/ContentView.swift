@@ -251,6 +251,20 @@ struct ContentView: View {
                             _ = try await fileProcessingVM.refreshBookmark(for: file)
                             uiStateVM.showToastMessage("Access refreshed for \"\(file.fileName)\".", isError: false)
                             uiStateVM.fileNeedingBookmarkRefresh = nil
+                        } catch let error as BookmarkError {
+                            switch error {
+                            case .userCancelled:
+                                // User cancelled - not an error, just show info toast
+                                uiStateVM.showToastMessage("File re-selection cancelled.", isError: false)
+                                // Keep sheet open so user can try again
+                            case .filenameMismatch(_, let actual):
+                                // Wrong file selected - show warning but keep sheet open for retry
+                                uiStateVM.showToastMessage("Selected file \"\(actual)\" doesn't match. Please select \"\(file.fileName)\".", isError: true)
+                            default:
+                                // Other bookmark errors - show error and dismiss
+                                uiStateVM.showToastMessage("Failed to refresh bookmark: \(error.localizedDescription)", isError: true)
+                                uiStateVM.fileNeedingBookmarkRefresh = nil
+                            }
                         } catch {
                             uiStateVM.showToastMessage("Failed to refresh bookmark: \(error.localizedDescription)", isError: true)
                             uiStateVM.fileNeedingBookmarkRefresh = nil
