@@ -39,30 +39,46 @@ struct RenamingStepRow: View {
                     .padding(8)
                 }
                 switch step.type {
-                case .findReplace(let find, let replace):
+                case .findReplace(let find, let replace, let isRegex):
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Find & Replace").font(.headline)
                         HStack {
-                            TextField("Find", text: Binding(
+                            Text("Find & Replace").font(.headline)
+                            Spacer()
+                            Toggle("Regex", isOn: Binding(
+                                get: { isRegex },
+                                set: { newValue in
+                                    step.type = .findReplace(find: find, replace: replace, isRegex: newValue)
+                                }
+                            ))
+                            .toggleStyle(.checkbox)
+                            .font(.subheadline)
+                        }
+                        HStack {
+                            TextField(isRegex ? "Pattern" : "Find", text: Binding(
                                 get: { find },
                                 set: { newValue in
-                                    step.type = .findReplace(find: newValue, replace: replace)
+                                    step.type = .findReplace(find: newValue, replace: replace, isRegex: isRegex)
                                 }
                             ))
                             .onDrop(of: [UTType.text], isTargeted: nil) { _ in false }
                             .padding(6)
                             .background(Color(NSColor.quaternarySystemFill))
                             .cornerRadius(6)
-                            TextField("Replace", text: Binding(
+                            TextField(isRegex ? "Template" : "Replace", text: Binding(
                                 get: { replace },
                                 set: { newValue in
-                                    step.type = .findReplace(find: find, replace: newValue)
+                                    step.type = .findReplace(find: find, replace: newValue, isRegex: isRegex)
                                 }
                             ))
                             .onDrop(of: [UTType.text], isTargeted: nil) { _ in false }
                             .padding(6)
                             .background(Color(NSColor.quaternarySystemFill))
                             .cornerRadius(6)
+                        }
+                        if isRegex {
+                            Text("Use $1, $2, etc. in template for capture groups")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
                 case .prefix(let value):
@@ -233,7 +249,7 @@ struct RenamingStepRow: View {
 
 #Preview {
     struct RenamingStepRowPreviews: View {
-        @State var findReplaceStep = RenamingStep(type: .findReplace(find: "FindText", replace: "ReplaceText"))
+        @State var findReplaceStep = RenamingStep(type: .findReplace(find: "FindText", replace: "ReplaceText", isRegex: false))
         @State var prefixStep = RenamingStep(type: .prefix("PRE_"))
         @State var suffixStep = RenamingStep(type: .suffix("_SUF"))
         @State var fileFormatStep = RenamingStep(type: .fileFormat(.camelCased))

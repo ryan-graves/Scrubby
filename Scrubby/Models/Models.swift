@@ -47,7 +47,7 @@ public enum SequentialNumberPosition: String, Codable, CaseIterable, Equatable {
 
 // MARK: - RenamingStepType
 public enum RenamingStepType: Equatable {
-    case findReplace(find: String, replace: String)
+    case findReplace(find: String, replace: String, isRegex: Bool = false)
     case prefix(String)
     case suffix(String)
     case fileFormat(FileFormat)
@@ -73,7 +73,7 @@ extension RenamingStep: Codable {
     }
     
     enum StepTypeCodingKeys: String, CodingKey {
-        case kind, find, replace, value, format, start, minDigits, position
+        case kind, find, replace, isRegex, value, format, start, minDigits, position
     }
     
     enum StepKind: String, Codable {
@@ -87,10 +87,11 @@ extension RenamingStep: Codable {
         var typeContainer = container.nestedContainer(keyedBy: StepTypeCodingKeys.self, forKey: .type)
         
         switch type {
-        case .findReplace(let find, let replace):
+        case .findReplace(let find, let replace, let isRegex):
             try typeContainer.encode(StepKind.findReplace, forKey: .kind)
             try typeContainer.encode(find, forKey: .find)
             try typeContainer.encode(replace, forKey: .replace)
+            try typeContainer.encode(isRegex, forKey: .isRegex)
         case .prefix(let value):
             try typeContainer.encode(StepKind.prefix, forKey: .kind)
             try typeContainer.encode(value, forKey: .value)
@@ -122,7 +123,8 @@ extension RenamingStep: Codable {
         case .findReplace:
             let find = try typeContainer.decode(String.self, forKey: .find)
             let replace = try typeContainer.decode(String.self, forKey: .replace)
-            type = .findReplace(find: find, replace: replace)
+            let isRegex = try typeContainer.decodeIfPresent(Bool.self, forKey: .isRegex) ?? false
+            type = .findReplace(find: find, replace: replace, isRegex: isRegex)
         case .prefix:
             let value = try typeContainer.decode(String.self, forKey: .value)
             type = .prefix(value)

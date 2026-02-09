@@ -14,9 +14,13 @@ struct RenamingEngine {
         
         for step in steps {
             switch step.type {
-            case .findReplace(let find, let replace):
+            case .findReplace(let find, let replace, let isRegex):
                 if !find.isEmpty {
-                    baseName = baseName.replacingOccurrences(of: find, with: replace, options: .caseInsensitive)
+                    if isRegex {
+                        baseName = applyRegexReplacement(pattern: find, replacement: replace, to: baseName)
+                    } else {
+                        baseName = baseName.replacingOccurrences(of: find, with: replace, options: .caseInsensitive)
+                    }
                 }
             case .prefix(let value):
                 baseName = value + baseName
@@ -51,5 +55,22 @@ struct RenamingEngine {
             baseName += ".\(ext)"
         }
         return baseName
+    }
+    
+    /// Applies a regex pattern replacement to a string
+    /// - Parameters:
+    ///   - pattern: The regex pattern to match
+    ///   - replacement: The replacement string (supports $1, $2 etc. for capture groups)
+    ///   - input: The input string to transform
+    /// - Returns: The transformed string, or original if regex is invalid
+    private static func applyRegexReplacement(pattern: String, replacement: String, to input: String) -> String {
+        do {
+            let regex = try NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
+            let range = NSRange(input.startIndex..., in: input)
+            return regex.stringByReplacingMatches(in: input, options: [], range: range, withTemplate: replacement)
+        } catch {
+            // If regex is invalid, return the original string unchanged
+            return input
+        }
     }
 }

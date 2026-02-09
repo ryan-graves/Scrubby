@@ -15,10 +15,11 @@ struct RenamingStepTests {
 
     @Test("RenamingStep findReplace initializes with correct values")
     func testFindReplaceStepInitialization() async throws {
-        let step = RenamingStep(type: .findReplace(find: "foo", replace: "bar"))
-        if case let .findReplace(find, replace) = step.type {
+        let step = RenamingStep(type: .findReplace(find: "foo", replace: "bar", isRegex: false))
+        if case let .findReplace(find, replace, isRegex) = step.type {
             #expect(find == "foo")
             #expect(replace == "bar")
+            #expect(isRegex == false)
         } else {
             #expect(Bool(false), "Expected findReplace type")
         }
@@ -68,7 +69,7 @@ struct RenamingStepTests {
     
     @Test("RenamingStep encodes and decodes correctly")
     func testRenamingStepCodable() async throws {
-        let originalStep = RenamingStep(type: .findReplace(find: "old", replace: "new"))
+        let originalStep = RenamingStep(type: .findReplace(find: "old", replace: "new", isRegex: false))
         
         let encoder = JSONEncoder()
         let data = try encoder.encode(originalStep)
@@ -87,21 +88,21 @@ struct RenamingEngineTests {
     
     @Test("RenamingEngine processes find and replace step")
     func testFindReplace() async throws {
-        let steps = [RenamingStep(type: .findReplace(find: "old", replace: "new"))]
+        let steps = [RenamingStep(type: .findReplace(find: "old", replace: "new", isRegex: false))]
         let result = RenamingEngine.processFileName("old_file_old.txt", at: 0, with: steps)
         #expect(result == "new_file_new.txt")
     }
     
     @Test("RenamingEngine find and replace is case insensitive")
     func testFindReplaceCaseInsensitive() async throws {
-        let steps = [RenamingStep(type: .findReplace(find: "OLD", replace: "new"))]
+        let steps = [RenamingStep(type: .findReplace(find: "OLD", replace: "new", isRegex: false))]
         let result = RenamingEngine.processFileName("old_file.txt", at: 0, with: steps)
         #expect(result == "new_file.txt")
     }
     
     @Test("RenamingEngine skips empty find string")
     func testFindReplaceEmptyFind() async throws {
-        let steps = [RenamingStep(type: .findReplace(find: "", replace: "new"))]
+        let steps = [RenamingStep(type: .findReplace(find: "", replace: "new", isRegex: false))]
         let result = RenamingEngine.processFileName("original.txt", at: 0, with: steps)
         #expect(result == "original.txt")
     }
@@ -182,7 +183,7 @@ struct RenamingEngineTests {
     @Test("RenamingEngine applies multiple steps in sequence")
     func testMultipleSteps() async throws {
         let steps = [
-            RenamingStep(type: .findReplace(find: "old", replace: "new")),
+            RenamingStep(type: .findReplace(find: "old", replace: "new", isRegex: false)),
             RenamingStep(type: .prefix("2024_")),
             RenamingStep(type: .suffix("_v1"))
         ]
@@ -202,6 +203,64 @@ struct RenamingEngineTests {
         let steps: [RenamingStep] = []
         let result = RenamingEngine.processFileName("file.txt", at: 0, with: steps)
         #expect(result == "file.txt")
+    }
+    
+    // MARK: - Regex Tests
+    
+    @Test("RenamingEngine processes basic regex replacement")
+    func testRegexBasicReplacement() async throws {
+        let steps = [RenamingStep(type: .findReplace(find: "\\d+", replace: "NUM", isRegex: true))]
+        let result = RenamingEngine.processFileName("file123test456.txt", at: 0, with: steps)
+        #expect(result == "fileNUMtestNUM.txt")
+    }
+    
+    @Test("RenamingEngine processes regex with capture groups")
+    func testRegexCaptureGroups() async throws {
+        let steps = [RenamingStep(type: .findReplace(find: "(\\w+)-(\\w+)", replace: "$2_$1", isRegex: true))]
+        let result = RenamingEngine.processFileName("hello-world.txt", at: 0, with: steps)
+        #expect(result == "world_hello.txt")
+    }
+    
+    @Test("RenamingEngine regex handles invalid pattern gracefully")
+    func testRegexInvalidPattern() async throws {
+        let steps = [RenamingStep(type: .findReplace(find: "[invalid", replace: "new", isRegex: true))]
+        let result = RenamingEngine.processFileName("original.txt", at: 0, with: steps)
+        // Invalid regex should leave filename unchanged
+        #expect(result == "original.txt")
+    }
+    
+    @Test("RenamingEngine regex removes matching text when replace is empty")
+    func testRegexRemoveMatches() async throws {
+        let steps = [RenamingStep(type: .findReplace(find: "\\s+", replace: "", isRegex: true))]
+        let result = RenamingEngine.processFileName("file with spaces.txt", at: 0, with: steps)
+        #expect(result == "filewithspaces.txt")
+    }
+    
+    @Test("RenamingEngine regex is case insensitive")
+    func testRegexCaseInsensitive() async throws {
+        let steps = [RenamingStep(type: .findReplace(find: "test", replace: "REPLACED", isRegex: true))]
+        let result = RenamingEngine.processFileName("MyTEST_file.txt", at: 0, with: steps)
+        #expect(result == "MyREPLACED_file.txt")
+    }
+    
+    @Test("RenamingStep with regex encodes and decodes correctly")
+    func testRenamingStepRegexCodable() async throws {
+        let originalStep = RenamingStep(type: .findReplace(find: "\\d+", replace: "NUM", isRegex: true))
+        
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(originalStep)
+        
+        let decoder = JSONDecoder()
+        let decodedStep = try decoder.decode(RenamingStep.self, from: data)
+        
+        #expect(decodedStep.id == originalStep.id)
+        if case let .findReplace(find, replace, isRegex) = decodedStep.type {
+            #expect(find == "\\d+")
+            #expect(replace == "NUM")
+            #expect(isRegex == true)
+        } else {
+            #expect(Bool(false), "Expected findReplace type")
+        }
     }
 }
 
