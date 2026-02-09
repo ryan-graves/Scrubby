@@ -344,10 +344,9 @@ struct ContentView: View {
             uiStateVM.showToastMessage(result.summaryMessage, isError: result.hasErrors)
             
             // Handle stale bookmarks - show refresh dialog for first stale file
-            if let staleError = result.errors.first(where: { $0.message.contains("stale") }) {
-                if let file = fileProcessingVM.selectedFiles.first(where: { $0.fileName == staleError.fileName }) {
-                    uiStateVM.fileNeedingBookmarkRefresh = file
-                }
+            if let staleFileId = result.firstStaleBookmarkFileId,
+               let file = fileProcessingVM.selectedFiles.first(where: { $0.id == staleFileId }) {
+                uiStateVM.fileNeedingBookmarkRefresh = file
             }
         }
     }

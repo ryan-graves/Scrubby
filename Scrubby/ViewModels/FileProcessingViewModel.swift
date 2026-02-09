@@ -191,7 +191,8 @@ class FileProcessingViewModel: ObservableObject {
                     errorCount: 1,
                     errors: [FileProcessingError(
                         fileName: "destination folder",
-                        message: "Could not access folder permissions"
+                        message: "Could not access folder permissions",
+                        kind: .permissionDenied
                     )]
                 )
             }
@@ -207,8 +208,10 @@ class FileProcessingViewModel: ObservableObject {
                     if resolved.isStale {
                         // Skip stale bookmarks - they need to be refreshed
                         resolutionErrors.append(FileProcessingError(
+                            fileId: selectedFile.id,
                             fileName: selectedFile.fileName,
-                            message: "Bookmark is stale and needs to be refreshed"
+                            message: "Bookmark is stale and needs to be refreshed",
+                            kind: .staleBookmark
                         ))
                         resolved.stopAccessing()
                         continue
@@ -226,8 +229,10 @@ class FileProcessingViewModel: ObservableObject {
                     
                 } catch {
                     resolutionErrors.append(FileProcessingError(
+                        fileId: selectedFile.id,
                         fileName: selectedFile.fileName,
-                        message: "Could not resolve file URL: \(error.localizedDescription)"
+                        message: "Could not resolve file URL: \(error.localizedDescription)",
+                        kind: .resolutionFailed
                     ))
                 }
             }

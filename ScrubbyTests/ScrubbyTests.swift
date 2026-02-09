@@ -660,29 +660,45 @@ struct UIStateViewModelTests {
 @MainActor
 struct FileProcessingViewModelTests {
     
+    /// Creates an isolated ViewModel with its own UserDefaults instance for hermetic testing
+    private func createIsolatedViewModel() -> FileProcessingViewModel {
+        let testDefaults = UserDefaults(suiteName: "com.scrubby.tests.\(UUID().uuidString)")!
+        let persistenceService = BookmarkPersistenceService(userDefaults: testDefaults, key: "testBookmarks")
+        return FileProcessingViewModel(persistenceService: persistenceService)
+    }
+    
     @Test("FileProcessingViewModel initializes with correct defaults")
     func testInitialState() async throws {
-        let vm = FileProcessingViewModel()
+        let vm = createIsolatedViewModel()
         
         #expect(vm.overwrite == false)
         #expect(vm.moveFiles == false)
         #expect(vm.destinationFolderURL == nil)
         #expect(vm.renamingSteps.count == 1) // Default step
+        #expect(vm.selectedFiles.isEmpty) // No files in isolated storage
     }
     
     @Test("FileProcessingViewModel clearFiles removes all files")
     func testClearFiles() async throws {
-        let vm = FileProcessingViewModel()
+        let vm = createIsolatedViewModel()
         
-        // Add some mock files manually (simulating internal state)
-        // Since we can't easily add files without real bookmarks, test the clear behavior
+        // Seed with mock files by directly setting the property
+        let bookmarkData = "test".data(using: .utf8)!
+        vm.selectedFiles = [
+            SelectedFile(fileName: "file1.txt", bookmark: bookmarkData),
+            SelectedFile(fileName: "file2.txt", bookmark: bookmarkData)
+        ]
+        
+        #expect(vm.selectedFiles.count == 2)
+        
         vm.clearFiles()
+        
         #expect(vm.selectedFiles.isEmpty)
     }
     
     @Test("FileProcessingViewModel applyPreset updates state")
     func testApplyPreset() async throws {
-        let vm = FileProcessingViewModel()
+        let vm = createIsolatedViewModel()
         
         let steps = [
             RenamingStep(type: .prefix("test_")),
@@ -704,7 +720,7 @@ struct FileProcessingViewModelTests {
     
     @Test("FileProcessingViewModel createPreset captures current state")
     func testCreatePreset() async throws {
-        let vm = FileProcessingViewModel()
+        let vm = createIsolatedViewModel()
         
         vm.renamingSteps = [RenamingStep(type: .prefix("pre_"))]
         vm.overwrite = true
@@ -720,7 +736,7 @@ struct FileProcessingViewModelTests {
     
     @Test("FileProcessingViewModel previewFileName uses RenamingEngine")
     func testPreviewFileName() async throws {
-        let vm = FileProcessingViewModel()
+        let vm = createIsolatedViewModel()
         
         vm.renamingSteps = [RenamingStep(type: .prefix("2024_"))]
         
@@ -734,7 +750,7 @@ struct FileProcessingViewModelTests {
     
     @Test("FileProcessingViewModel previewFileName handles sequential numbering")
     func testPreviewFileNameSequential() async throws {
-        let vm = FileProcessingViewModel()
+        let vm = createIsolatedViewModel()
         
         vm.renamingSteps = [RenamingStep(type: .sequentialNumbering(start: 1, minDigits: 3, position: .prefix))]
         
@@ -748,5 +764,106 @@ struct FileProcessingViewModelTests {
         #expect(preview0 == "001photo.jpg")
         #expect(preview1 == "002photo.jpg")
         #expect(preview2 == "003photo.jpg")
+    }
+    
+    @Test("FileProcessingViewModel removeFile removes correct file by ID")
+    func testRemoveFile() async throws {
+        let vm = createIsolatedViewModel()
+        
+        let bookmarkData = "test".data(using: .utf8)!
+        let file1 = SelectedFile(fileName: "file1.txt", bookmark: bookmarkData)
+        let file2 = SelectedFile(fileName: "file2.txt", bookmark: bookmarkData)
+        let file3 = SelectedFile(fileName: "file3.txt", bookmark: bookmarkData)
+        
+        vm.selectedFiles = [file1, file2, file3]
+        
+        vm.removeFile(id: file2.id)
+        
+        #expect(vm.selectedFiles.count == 2)
+        #expect(vm.selectedFiles.contains(where: { $0.id == file1.id }))
+        #expect(!vm.selectedFiles.contains(where: { $0.id == file2.id }))
+        #expect(vm.selectedFiles.contains(where: { $0.id == file3.id }))
+    }
+}
+
+// MARK: - FileProcessingError Tests
+
+struct FileProcessingErrorTests {
+    
+    @Test("FileProcessingError initializes with all properties")
+    func testErrorInitialization() async throws {
+        let fileId = UUID()
+        let error = FileProcessingError(
+            fileId: fileId,
+            fileName: "test.txt",
+            message: "Test error",
+            kind: .staleBookmark
+        )
+        
+        #expect(error.fileId == fileId)
+        #expect(error.fileName == "test.txt")
+        #expect(error.message == "Test error")
+        #expect(error.kind == .staleBookmark)
+    }
+    
+    @Test("FileProcessingError defaults to fileSystemError kind")
+    func testErrorDefaultKind() async throws {
+        let error = FileProcessingError(fileName: "test.txt", message: "Test error")
+        
+        #expect(error.kind == .fileSystemError)
+        #expect(error.fileId == nil)
+    }
+    
+    @Test("FileProcessingResult staleBookmarkFileIds returns correct IDs")
+    func testStaleBookmarkFileIds() async throws {
+        let staleId1 = UUID()
+        let staleId2 = UUID()
+        let otherId = UUID()
+        
+        let result = FileProcessingResult(
+            successCount: 2,
+            errorCount: 3,
+            errors: [
+                FileProcessingError(fileId: staleId1, fileName: "stale1.txt", message: "Stale", kind: .staleBookmark),
+                FileProcessingError(fileId: otherId, fileName: "other.txt", message: "Failed", kind: .resolutionFailed),
+                FileProcessingError(fileId: staleId2, fileName: "stale2.txt", message: "Stale", kind: .staleBookmark)
+            ]
+        )
+        
+        let staleIds = result.staleBookmarkFileIds
+        
+        #expect(staleIds.count == 2)
+        #expect(staleIds.contains(staleId1))
+        #expect(staleIds.contains(staleId2))
+        #expect(!staleIds.contains(otherId))
+    }
+    
+    @Test("FileProcessingResult firstStaleBookmarkFileId returns first stale ID")
+    func testFirstStaleBookmarkFileId() async throws {
+        let staleId = UUID()
+        
+        let result = FileProcessingResult(
+            successCount: 1,
+            errorCount: 2,
+            errors: [
+                FileProcessingError(fileId: UUID(), fileName: "other.txt", message: "Failed", kind: .fileSystemError),
+                FileProcessingError(fileId: staleId, fileName: "stale.txt", message: "Stale", kind: .staleBookmark)
+            ]
+        )
+        
+        #expect(result.firstStaleBookmarkFileId == staleId)
+    }
+    
+    @Test("FileProcessingResult firstStaleBookmarkFileId returns nil when no stale errors")
+    func testFirstStaleBookmarkFileIdNil() async throws {
+        let result = FileProcessingResult(
+            successCount: 1,
+            errorCount: 1,
+            errors: [
+                FileProcessingError(fileId: UUID(), fileName: "other.txt", message: "Failed", kind: .fileSystemError)
+            ]
+        )
+        
+        #expect(result.firstStaleBookmarkFileId == nil)
     }
 }

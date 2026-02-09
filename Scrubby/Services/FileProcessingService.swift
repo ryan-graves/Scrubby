@@ -31,13 +31,42 @@ struct FileProcessingResult {
             return "Failed to process files"
         }
     }
+    
+    /// Returns IDs of files with stale bookmarks that need refresh
+    var staleBookmarkFileIds: [UUID] {
+        errors
+            .filter { $0.kind == .staleBookmark }
+            .compactMap { $0.fileId }
+    }
+    
+    /// Returns the first file ID with a stale bookmark, if any
+    var firstStaleBookmarkFileId: UUID? {
+        staleBookmarkFileIds.first
+    }
+}
+
+/// Categorizes the type of file processing error
+enum FileProcessingErrorKind: Equatable {
+    case staleBookmark
+    case resolutionFailed
+    case fileSystemError
+    case permissionDenied
 }
 
 /// Represents an error during file processing
 struct FileProcessingError: Identifiable {
     let id = UUID()
+    let fileId: UUID?  // ID of the SelectedFile, if available
     let fileName: String
     let message: String
+    let kind: FileProcessingErrorKind
+    
+    init(fileId: UUID? = nil, fileName: String, message: String, kind: FileProcessingErrorKind = .fileSystemError) {
+        self.fileId = fileId
+        self.fileName = fileName
+        self.message = message
+        self.kind = kind
+    }
 }
 
 /// Service for handling file system operations
