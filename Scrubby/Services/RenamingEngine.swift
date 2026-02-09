@@ -43,12 +43,27 @@ struct RenamingEngine {
             case .findReplace(let find, let replace, let isRegex):
                 if !find.isEmpty {
                     if isRegex {
-                        baseName = applyRegexReplacement(
-                            pattern: find,
-                            replacement: replace,
-                            to: baseName,
-                            compiledRegex: compiledRegex?[step.id]
-                        )
+                        if let compiledRegex = compiledRegex {
+                            // A compiled regex cache was provided; only apply if we have an entry.
+                            // Missing entry means invalid regex that failed precompilation - skip to avoid
+                            // repeated compilation attempts for each file in batch.
+                            if let compiledStep = compiledRegex[step.id] {
+                                baseName = applyRegexReplacement(
+                                    pattern: find,
+                                    replacement: replace,
+                                    to: baseName,
+                                    compiledRegex: compiledStep
+                                )
+                            }
+                        } else {
+                            // No compiled cache provided; compile on demand (for preview/single file).
+                            baseName = applyRegexReplacement(
+                                pattern: find,
+                                replacement: replace,
+                                to: baseName,
+                                compiledRegex: nil
+                            )
+                        }
                     } else {
                         baseName = baseName.replacingOccurrences(of: find, with: replace, options: .caseInsensitive)
                     }

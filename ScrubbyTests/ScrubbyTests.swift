@@ -288,6 +288,67 @@ struct RenamingEngineTests {
         // Should return unchanged since $10 doesn't exist (only 2 capture groups)
         #expect(result == "ab.txt")
     }
+    
+    // MARK: - Compiled Regex Cache Tests
+    
+    @Test("RenamingEngine compileRegexSteps caches valid regex patterns")
+    func testCompileRegexStepsValid() async throws {
+        let steps = [
+            RenamingStep(type: .findReplace(find: "(\\d+)", replace: "[$1]", isRegex: true)),
+            RenamingStep(type: .findReplace(find: "foo", replace: "bar", isRegex: false)), // Non-regex
+            RenamingStep(type: .prefix("pre_"))
+        ]
+        let compiled = RenamingEngine.compileRegexSteps(steps)
+        
+        // Only the first step should be in the cache (regex step)
+        #expect(compiled.count == 1)
+        #expect(compiled[steps[0].id] != nil)
+        #expect(compiled[steps[0].id]?.captureGroupCount == 1)
+    }
+    
+    @Test("RenamingEngine compileRegexSteps excludes invalid regex patterns")
+    func testCompileRegexStepsInvalid() async throws {
+        let steps = [
+            RenamingStep(type: .findReplace(find: "[invalid(", replace: "x", isRegex: true)), // Invalid pattern
+            RenamingStep(type: .findReplace(find: "(valid)", replace: "$1", isRegex: true))
+        ]
+        let compiled = RenamingEngine.compileRegexSteps(steps)
+        
+        // Only the valid regex should be compiled
+        #expect(compiled.count == 1)
+        #expect(compiled[steps[0].id] == nil) // Invalid pattern not cached
+        #expect(compiled[steps[1].id] != nil) // Valid pattern cached
+    }
+    
+    @Test("RenamingEngine with compiled cache produces same output as on-demand")
+    func testCompiledCacheMatchesOnDemand() async throws {
+        let steps = [RenamingStep(type: .findReplace(find: "(\\d+)-(\\w+)", replace: "$2_$1", isRegex: true))]
+        let filename = "123-test.txt"
+        
+        // Process without cache (on-demand compilation)
+        let resultOnDemand = RenamingEngine.processFileName(filename, at: 0, with: steps, compiledRegex: nil)
+        
+        // Process with compiled cache
+        let compiled = RenamingEngine.compileRegexSteps(steps)
+        let resultCached = RenamingEngine.processFileName(filename, at: 0, with: steps, compiledRegex: compiled)
+        
+        #expect(resultOnDemand == resultCached)
+        #expect(resultOnDemand == "test_123.txt")
+    }
+    
+    @Test("RenamingEngine skips invalid regex when cache provided but entry missing")
+    func testSkipsInvalidRegexWhenCacheProvided() async throws {
+        let invalidStep = RenamingStep(type: .findReplace(find: "[invalid(", replace: "x", isRegex: true))
+        let steps = [invalidStep]
+        
+        // Compile - invalid pattern won't be in cache
+        let compiled = RenamingEngine.compileRegexSteps(steps)
+        #expect(compiled.isEmpty)
+        
+        // When cache is provided but entry is missing, step should be skipped (not re-compiled)
+        let result = RenamingEngine.processFileName("test.txt", at: 0, with: steps, compiledRegex: compiled)
+        #expect(result == "test.txt") // Unchanged because step was skipped
+    }
 }
 
 // MARK: - String Extension Tests
