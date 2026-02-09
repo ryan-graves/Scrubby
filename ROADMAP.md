@@ -416,10 +416,11 @@ After ContentView refactoring, verify:
 
 3. **Regex Support in Find & Replace** ✅
    - Toggle to enable regex mode in Find & Replace step
-   - Support for capture groups ($1, $2, etc. in replacement)
+   - Support for capture groups ($0 for full match, $1, $2, etc. in replacement)
    - Case-insensitive matching
-   - Graceful handling of invalid regex patterns
-   - 6 new unit tests for regex functionality
+   - Graceful handling of invalid regex patterns and templates
+   - Pre-compiled regex caching for batch performance
+   - 9 new unit tests for regex functionality
 
 ---
 

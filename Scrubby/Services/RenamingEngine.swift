@@ -1,9 +1,8 @@
 import Foundation
 
-/// Holds a pre-compiled regex and its replacement template for efficient batch processing
+/// Holds a pre-compiled regex for efficient batch processing
 struct CompiledRegexStep {
     let regex: NSRegularExpression
-    let replacement: String
     let captureGroupCount: Int
 }
 
@@ -20,7 +19,6 @@ struct RenamingEngine {
                 if let regex = try? NSRegularExpression(pattern: find, options: [.caseInsensitive]) {
                     compiled[step.id] = CompiledRegexStep(
                         regex: regex,
-                        replacement: "",  // Will use actual replacement at call time
                         captureGroupCount: regex.numberOfCaptureGroups
                     )
                 }
@@ -128,6 +126,7 @@ struct RenamingEngine {
     
     /// Validates that all `$n` references in the replacement template refer to existing capture groups.
     /// This prevents `NSRegularExpression` from raising Objective-C exceptions for invalid templates.
+    /// Handles escaped dollars (\\$) which are treated as literal $ characters.
     /// - Parameters:
     ///   - template: The replacement template string
     ///   - captureGroupCount: The number of capture groups in the regex pattern
@@ -136,6 +135,17 @@ struct RenamingEngine {
         var i = template.startIndex
         while i < template.endIndex {
             let char = template[i]
+            
+            // Handle backslash escapes - skip the next character
+            if char == "\\" {
+                let nextIndex = template.index(after: i)
+                if nextIndex < template.endIndex {
+                    // Skip both the backslash and the escaped character
+                    i = template.index(after: nextIndex)
+                    continue
+                }
+            }
+            
             if char == "$" {
                 let nextIndex = template.index(after: i)
                 // Check if followed by a digit (capture group reference)

@@ -76,7 +76,7 @@ struct RenamingStepRow: View {
                             .cornerRadius(6)
                         }
                         if isRegex {
-                            Text("Use $1, $2, etc. in template for capture groups")
+                            Text("Use $0 for full match, $1, $2, etc. for capture groups")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
