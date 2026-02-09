@@ -30,17 +30,62 @@ jobs:
         with:
           version: 2.8.1
 
+      - name: Install Developer ID certificate
+        env:
+          DEVELOPER_ID_CERT_BASE64: ${{ secrets.DEVELOPER_ID_CERT_BASE64 }}
+          DEVELOPER_ID_CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+        run: |
+          # Create a temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          # Create keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Decode and import certificate
+          echo "$DEVELOPER_ID_CERT_BASE64" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          security import $RUNNER_TEMP/certificate.p12 \
+            -P "$DEVELOPER_ID_CERT_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+
+          # Add keychain to search list
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+          # Allow codesign to access the keychain
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Clean up certificate file
+          rm -f $RUNNER_TEMP/certificate.p12
+
+          # Verify the identity is available
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
       - name: Build app
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           xcodebuild -project FileScrubby.xcodeproj \
             -scheme FileScrubby \
             -configuration Release \
             -derivedDataPath ./build \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             MACOSX_DEPLOYMENT_TARGET=26.0 \
             clean build
+
+      - name: Verify code signature
+        run: |
+          echo "Verifying code signature..."
+          codesign --verify --deep --strict --verbose=2 build/Build/Products/Release/FileScrubby.app
+          echo ""
+          echo "Code signature details:"
+          codesign -dv --verbose=4 build/Build/Products/Release/FileScrubby.app
 
       - name: Create DMG
         run: |
@@ -69,9 +114,11 @@ jobs:
             --download-url-prefix "https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/main/Releases/" \
             .
 
-      - name: Cleanup Sparkle private key
+      - name: Cleanup secrets
         if: always()
-        run: rm -f sparkle_key
+        run: |
+          rm -f sparkle_key
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true
 
       - name: Commit and push changes
         run: |
