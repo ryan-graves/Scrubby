@@ -349,6 +349,39 @@ struct RenamingEngineTests {
         let result = RenamingEngine.processFileName("test.txt", at: 0, with: steps, compiledRegex: compiled)
         #expect(result == "test.txt") // Unchanged because step was skipped
     }
+    
+    @Test("RenamingEngine regex rejects dangling dollar sign in template")
+    func testRegexRejectsDanglingDollar() async throws {
+        // Dangling $ (not followed by digit) should be rejected
+        let steps = [RenamingStep(type: .findReplace(find: "(test)", replace: "prefix$", isRegex: true))]
+        let result = RenamingEngine.processFileName("test.txt", at: 0, with: steps)
+        #expect(result == "test.txt") // Unchanged due to invalid template
+    }
+    
+    @Test("RenamingEngine regex rejects dollar followed by non-digit")
+    func testRegexRejectsDollarNonDigit() async throws {
+        // $x is invalid (not a capture group reference)
+        let steps = [RenamingStep(type: .findReplace(find: "(test)", replace: "$x", isRegex: true))]
+        let result = RenamingEngine.processFileName("test.txt", at: 0, with: steps)
+        #expect(result == "test.txt") // Unchanged due to invalid template
+    }
+    
+    @Test("RenamingEngine regex rejects trailing backslash in template")
+    func testRegexRejectsTrailingBackslash() async throws {
+        // Trailing backslash is invalid
+        let steps = [RenamingStep(type: .findReplace(find: "(test)", replace: "value\\", isRegex: true))]
+        let result = RenamingEngine.processFileName("test.txt", at: 0, with: steps)
+        #expect(result == "test.txt") // Unchanged due to invalid template
+    }
+    
+    @Test("RenamingEngine regex allows escaped dollar as literal")
+    func testRegexAllowsEscapedDollar() async throws {
+        // \\$ should be treated as a literal $ character
+        let steps = [RenamingStep(type: .findReplace(find: "(test)", replace: "\\$1literal", isRegex: true))]
+        let result = RenamingEngine.processFileName("test.txt", at: 0, with: steps)
+        // The escaped $ becomes literal, so output is "$1literal"
+        #expect(result == "$1literal.txt")
+    }
 }
 
 // MARK: - String Extension Tests

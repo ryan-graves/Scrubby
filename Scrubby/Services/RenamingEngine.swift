@@ -141,7 +141,8 @@ struct RenamingEngine {
     
     /// Validates that all `$n` references in the replacement template refer to existing capture groups.
     /// This prevents `NSRegularExpression` from raising Objective-C exceptions for invalid templates.
-    /// Handles escaped dollars (\\$) which are treated as literal $ characters.
+    /// Handles escaped characters (\\$, \\\\, etc.) which are treated as literals.
+    /// Rejects dangling `$` (not followed by digit) and trailing backslash.
     /// - Parameters:
     ///   - template: The replacement template string
     ///   - captureGroupCount: The number of capture groups in the regex pattern
@@ -151,19 +152,22 @@ struct RenamingEngine {
         while i < template.endIndex {
             let char = template[i]
             
-            // Handle backslash escapes - skip the next character
+            // Handle backslash escapes - must have a character to escape
             if char == "\\" {
                 let nextIndex = template.index(after: i)
                 if nextIndex < template.endIndex {
                     // Skip both the backslash and the escaped character
                     i = template.index(after: nextIndex)
                     continue
+                } else {
+                    // Trailing backslash is invalid
+                    return false
                 }
             }
             
             if char == "$" {
                 let nextIndex = template.index(after: i)
-                // Check if followed by a digit (capture group reference)
+                // $ must be followed by a digit to be a valid capture group reference
                 if nextIndex < template.endIndex, let firstDigit = template[nextIndex].wholeNumberValue {
                     // Parse the full number
                     var groupNumber = firstDigit
@@ -180,6 +184,9 @@ struct RenamingEngine {
                     
                     i = j
                     continue
+                } else {
+                    // Dangling $ (not followed by digit) is invalid
+                    return false
                 }
             }
             i = template.index(after: i)
