@@ -15,10 +15,11 @@ struct RenamingStepTests {
 
     @Test("RenamingStep findReplace initializes with correct values")
     func testFindReplaceStepInitialization() async throws {
-        let step = RenamingStep(type: .findReplace(find: "foo", replace: "bar"))
-        if case let .findReplace(find, replace) = step.type {
+        let step = RenamingStep(type: .findReplace(find: "foo", replace: "bar", isRegex: false))
+        if case let .findReplace(find, replace, isRegex) = step.type {
             #expect(find == "foo")
             #expect(replace == "bar")
+            #expect(isRegex == false)
         } else {
             #expect(Bool(false), "Expected findReplace type")
         }
@@ -68,7 +69,7 @@ struct RenamingStepTests {
     
     @Test("RenamingStep encodes and decodes correctly")
     func testRenamingStepCodable() async throws {
-        let originalStep = RenamingStep(type: .findReplace(find: "old", replace: "new"))
+        let originalStep = RenamingStep(type: .findReplace(find: "old", replace: "new", isRegex: false))
         
         let encoder = JSONEncoder()
         let data = try encoder.encode(originalStep)
@@ -87,21 +88,21 @@ struct RenamingEngineTests {
     
     @Test("RenamingEngine processes find and replace step")
     func testFindReplace() async throws {
-        let steps = [RenamingStep(type: .findReplace(find: "old", replace: "new"))]
+        let steps = [RenamingStep(type: .findReplace(find: "old", replace: "new", isRegex: false))]
         let result = RenamingEngine.processFileName("old_file_old.txt", at: 0, with: steps)
         #expect(result == "new_file_new.txt")
     }
     
     @Test("RenamingEngine find and replace is case insensitive")
     func testFindReplaceCaseInsensitive() async throws {
-        let steps = [RenamingStep(type: .findReplace(find: "OLD", replace: "new"))]
+        let steps = [RenamingStep(type: .findReplace(find: "OLD", replace: "new", isRegex: false))]
         let result = RenamingEngine.processFileName("old_file.txt", at: 0, with: steps)
         #expect(result == "new_file.txt")
     }
     
     @Test("RenamingEngine skips empty find string")
     func testFindReplaceEmptyFind() async throws {
-        let steps = [RenamingStep(type: .findReplace(find: "", replace: "new"))]
+        let steps = [RenamingStep(type: .findReplace(find: "", replace: "new", isRegex: false))]
         let result = RenamingEngine.processFileName("original.txt", at: 0, with: steps)
         #expect(result == "original.txt")
     }
@@ -182,7 +183,7 @@ struct RenamingEngineTests {
     @Test("RenamingEngine applies multiple steps in sequence")
     func testMultipleSteps() async throws {
         let steps = [
-            RenamingStep(type: .findReplace(find: "old", replace: "new")),
+            RenamingStep(type: .findReplace(find: "old", replace: "new", isRegex: false)),
             RenamingStep(type: .prefix("2024_")),
             RenamingStep(type: .suffix("_v1"))
         ]
@@ -202,6 +203,184 @@ struct RenamingEngineTests {
         let steps: [RenamingStep] = []
         let result = RenamingEngine.processFileName("file.txt", at: 0, with: steps)
         #expect(result == "file.txt")
+    }
+    
+    // MARK: - Regex Tests
+    
+    @Test("RenamingEngine processes basic regex replacement")
+    func testRegexBasicReplacement() async throws {
+        let steps = [RenamingStep(type: .findReplace(find: "\\d+", replace: "NUM", isRegex: true))]
+        let result = RenamingEngine.processFileName("file123test456.txt", at: 0, with: steps)
+        #expect(result == "fileNUMtestNUM.txt")
+    }
+    
+    @Test("RenamingEngine processes regex with capture groups")
+    func testRegexCaptureGroups() async throws {
+        let steps = [RenamingStep(type: .findReplace(find: "(\\w+)-(\\w+)", replace: "$2_$1", isRegex: true))]
+        let result = RenamingEngine.processFileName("hello-world.txt", at: 0, with: steps)
+        #expect(result == "world_hello.txt")
+    }
+    
+    @Test("RenamingEngine regex handles invalid pattern gracefully")
+    func testRegexInvalidPattern() async throws {
+        let steps = [RenamingStep(type: .findReplace(find: "[invalid", replace: "new", isRegex: true))]
+        let result = RenamingEngine.processFileName("original.txt", at: 0, with: steps)
+        // Invalid regex should leave filename unchanged
+        #expect(result == "original.txt")
+    }
+    
+    @Test("RenamingEngine regex removes matching text when replace is empty")
+    func testRegexRemoveMatches() async throws {
+        let steps = [RenamingStep(type: .findReplace(find: "\\s+", replace: "", isRegex: true))]
+        let result = RenamingEngine.processFileName("file with spaces.txt", at: 0, with: steps)
+        #expect(result == "filewithspaces.txt")
+    }
+    
+    @Test("RenamingEngine regex is case insensitive")
+    func testRegexCaseInsensitive() async throws {
+        let steps = [RenamingStep(type: .findReplace(find: "test", replace: "REPLACED", isRegex: true))]
+        let result = RenamingEngine.processFileName("MyTEST_file.txt", at: 0, with: steps)
+        #expect(result == "MyREPLACED_file.txt")
+    }
+    
+    @Test("RenamingStep with regex encodes and decodes correctly")
+    func testRenamingStepRegexCodable() async throws {
+        let originalStep = RenamingStep(type: .findReplace(find: "\\d+", replace: "NUM", isRegex: true))
+        
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(originalStep)
+        
+        let decoder = JSONDecoder()
+        let decodedStep = try decoder.decode(RenamingStep.self, from: data)
+        
+        #expect(decodedStep.id == originalStep.id)
+        if case let .findReplace(find, replace, isRegex) = decodedStep.type {
+            #expect(find == "\\d+")
+            #expect(replace == "NUM")
+            #expect(isRegex == true)
+        } else {
+            #expect(Bool(false), "Expected findReplace type")
+        }
+    }
+    
+    @Test("RenamingEngine regex handles invalid replacement template gracefully")
+    func testRegexInvalidReplacementTemplate() async throws {
+        // Pattern has 1 capture group, but template references $2 which doesn't exist
+        let steps = [RenamingStep(type: .findReplace(find: "(\\w+)", replace: "$2", isRegex: true))]
+        let result = RenamingEngine.processFileName("hello.txt", at: 0, with: steps)
+        // Should return unchanged filename since template is invalid
+        #expect(result == "hello.txt")
+    }
+    
+    @Test("RenamingEngine regex allows $0 for full match")
+    func testRegexFullMatchReference() async throws {
+        // $0 refers to the entire match and should always be valid
+        let steps = [RenamingStep(type: .findReplace(find: "\\w+", replace: "[$0]", isRegex: true))]
+        let result = RenamingEngine.processFileName("hello.txt", at: 0, with: steps)
+        #expect(result == "[hello].txt")
+    }
+    
+    @Test("RenamingEngine regex handles multi-digit capture group references")
+    func testRegexMultiDigitCaptureGroup() async throws {
+        // Template with $10 should be invalid if there aren't 10 capture groups
+        let steps = [RenamingStep(type: .findReplace(find: "(a)(b)", replace: "$10", isRegex: true))]
+        let result = RenamingEngine.processFileName("ab.txt", at: 0, with: steps)
+        // Should return unchanged since $10 doesn't exist (only 2 capture groups)
+        #expect(result == "ab.txt")
+    }
+    
+    // MARK: - Compiled Regex Cache Tests
+    
+    @Test("RenamingEngine compileRegexSteps caches valid regex patterns")
+    func testCompileRegexStepsValid() async throws {
+        let steps = [
+            RenamingStep(type: .findReplace(find: "(\\d+)", replace: "[$1]", isRegex: true)),
+            RenamingStep(type: .findReplace(find: "foo", replace: "bar", isRegex: false)), // Non-regex
+            RenamingStep(type: .prefix("pre_"))
+        ]
+        let compiled = RenamingEngine.compileRegexSteps(steps)
+        
+        // Only the first step should be in the cache (regex step)
+        #expect(compiled.count == 1)
+        #expect(compiled[steps[0].id] != nil)
+        #expect(compiled[steps[0].id]?.captureGroupCount == 1)
+    }
+    
+    @Test("RenamingEngine compileRegexSteps excludes invalid regex patterns")
+    func testCompileRegexStepsInvalid() async throws {
+        let steps = [
+            RenamingStep(type: .findReplace(find: "[invalid(", replace: "x", isRegex: true)), // Invalid pattern
+            RenamingStep(type: .findReplace(find: "(valid)", replace: "$1", isRegex: true))
+        ]
+        let compiled = RenamingEngine.compileRegexSteps(steps)
+        
+        // Only the valid regex should be compiled
+        #expect(compiled.count == 1)
+        #expect(compiled[steps[0].id] == nil) // Invalid pattern not cached
+        #expect(compiled[steps[1].id] != nil) // Valid pattern cached
+    }
+    
+    @Test("RenamingEngine with compiled cache produces same output as on-demand")
+    func testCompiledCacheMatchesOnDemand() async throws {
+        let steps = [RenamingStep(type: .findReplace(find: "(\\d+)-(\\w+)", replace: "$2_$1", isRegex: true))]
+        let filename = "123-test.txt"
+        
+        // Process without cache (on-demand compilation)
+        let resultOnDemand = RenamingEngine.processFileName(filename, at: 0, with: steps, compiledRegex: nil)
+        
+        // Process with compiled cache
+        let compiled = RenamingEngine.compileRegexSteps(steps)
+        let resultCached = RenamingEngine.processFileName(filename, at: 0, with: steps, compiledRegex: compiled)
+        
+        #expect(resultOnDemand == resultCached)
+        #expect(resultOnDemand == "test_123.txt")
+    }
+    
+    @Test("RenamingEngine skips invalid regex when cache provided but entry missing")
+    func testSkipsInvalidRegexWhenCacheProvided() async throws {
+        let invalidStep = RenamingStep(type: .findReplace(find: "[invalid(", replace: "x", isRegex: true))
+        let steps = [invalidStep]
+        
+        // Compile - invalid pattern won't be in cache
+        let compiled = RenamingEngine.compileRegexSteps(steps)
+        #expect(compiled.isEmpty)
+        
+        // When cache is provided but entry is missing, step should be skipped (not re-compiled)
+        let result = RenamingEngine.processFileName("test.txt", at: 0, with: steps, compiledRegex: compiled)
+        #expect(result == "test.txt") // Unchanged because step was skipped
+    }
+    
+    @Test("RenamingEngine regex rejects dangling dollar sign in template")
+    func testRegexRejectsDanglingDollar() async throws {
+        // Dangling $ (not followed by digit) should be rejected
+        let steps = [RenamingStep(type: .findReplace(find: "(test)", replace: "prefix$", isRegex: true))]
+        let result = RenamingEngine.processFileName("test.txt", at: 0, with: steps)
+        #expect(result == "test.txt") // Unchanged due to invalid template
+    }
+    
+    @Test("RenamingEngine regex rejects dollar followed by non-digit")
+    func testRegexRejectsDollarNonDigit() async throws {
+        // $x is invalid (not a capture group reference)
+        let steps = [RenamingStep(type: .findReplace(find: "(test)", replace: "$x", isRegex: true))]
+        let result = RenamingEngine.processFileName("test.txt", at: 0, with: steps)
+        #expect(result == "test.txt") // Unchanged due to invalid template
+    }
+    
+    @Test("RenamingEngine regex rejects trailing backslash in template")
+    func testRegexRejectsTrailingBackslash() async throws {
+        // Trailing backslash is invalid
+        let steps = [RenamingStep(type: .findReplace(find: "(test)", replace: "value\\", isRegex: true))]
+        let result = RenamingEngine.processFileName("test.txt", at: 0, with: steps)
+        #expect(result == "test.txt") // Unchanged due to invalid template
+    }
+    
+    @Test("RenamingEngine regex allows escaped dollar as literal")
+    func testRegexAllowsEscapedDollar() async throws {
+        // \\$ should be treated as a literal $ character
+        let steps = [RenamingStep(type: .findReplace(find: "(test)", replace: "\\$1literal", isRegex: true))]
+        let result = RenamingEngine.processFileName("test.txt", at: 0, with: steps)
+        // The escaped $ becomes literal, so output is "$1literal"
+        #expect(result == "$1literal.txt")
     }
 }
 

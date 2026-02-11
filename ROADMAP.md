@@ -400,28 +400,38 @@ After ContentView refactoring, verify:
 
 ---
 
-## 🔮 Future Enhancements (After This PR)
+## ✅ Phase 5: Additional Features (IN PROGRESS)
 
-Once the architecture refactoring is complete, these become much easier:
+### Completed:
 
-1. **Unit Testing**
-   - Test RenamingEngine with various step combinations
-   - Test FileProcessingService with mocked FileManager
-   - Test BookmarkManager bookmark lifecycle
-   - Test ViewModels with mocked services
+1. **Unit Testing** ✅
+   - 74 unit tests covering RenamingEngine, FileProcessingService, ViewModels, and models
+   - Isolated UserDefaults for test independence
+   - Comprehensive coverage of edge cases
 
-2. **Better Error Handling**
-   - Structured error types throughout
+2. **Better Error Handling** ✅
+   - `FileProcessingErrorKind` enum for structured error types
+   - `fileId` on errors for stable correlation
    - User-friendly error messages
-   - Error recovery flows
 
-3. **Improved Accessibility**
+3. **Regex Support in Find & Replace** ✅
+   - Toggle to enable regex mode in Find & Replace step
+   - Support for capture groups ($0 for full match, $1, $2, etc. in replacement)
+   - Case-insensitive matching
+   - Graceful handling of invalid regex patterns and templates
+   - Pre-compiled regex caching for batch performance
+   - 9 new unit tests for regex functionality
+
+---
+
+## 🔮 Future Enhancements
+
+1. **Improved Accessibility**
    - VoiceOver labels and hints
    - Keyboard shortcuts
    - High contrast support
 
-4. **Additional Features**
-   - Regex support in Find & Replace
+2. **Additional Features**
    - Batch preview/confirmation screen
    - Filename templates
    - History/undo system
@@ -449,6 +459,6 @@ Once the architecture refactoring is complete, these become much easier:
 
 ---
 
-**Branch**: `refactor-architecture-viewmodels`
-**Status**: Phase 1 & 2 complete, Phase 3 ready to begin
-**Last Updated**: 2026-02-06
+**Branch**: `feature/regex-find-replace`
+**Status**: Phases 1-4 complete, Phase 5 in progress
+**Last Updated**: 2026-02-08
