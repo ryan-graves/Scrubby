@@ -100,9 +100,11 @@ struct PresetManagementView: View {
                                 )
                                 .contentShape(RoundedRectangle(cornerRadius: 8))
                                 .onTapGesture {
-                                    if !editMode {
-                                        selectedPreset = preset
-                                    }
+                                    selectPreset(preset)
+                                }
+                                .accessibilityAddTraits(.isButton)
+                                .accessibilityAction {
+                                    selectPreset(preset)
                                 }
                                 .alert("Delete Preset?", isPresented: $confirmDelete) {
                                     Button("Cancel", role: .cancel) {}
@@ -138,6 +140,12 @@ struct PresetManagementView: View {
         .frame(width: 450, height: 350)
     }
     
+    private func selectPreset(_ preset: Preset) {
+        if !editMode {
+            selectedPreset = preset
+        }
+    }
+
     private func startEditing(_ preset: Preset) {
         editMode = true
         editingName = preset.name

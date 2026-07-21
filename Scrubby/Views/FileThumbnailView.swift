@@ -24,16 +24,18 @@ struct FileThumbnailView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: thumbnailSize.size.width, height: thumbnailSize.size.height)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                        )
+                    .clipShape(.rect(cornerRadius: 4))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                    }
             } else {
                 Rectangle()
                     .fill(Color.gray.opacity(0.3))
                     .frame(width: thumbnailSize.size.width, height: thumbnailSize.size.height)
-                    .overlay(ProgressView())
+                    .overlay {
+                        ProgressView()
+                    }
             }
         }
         .onAppear {
@@ -52,7 +54,7 @@ struct FileThumbnailView: View {
                                                    representationTypes: .thumbnail)
         QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { (thumbnail, error) in
             if let thumbnail = thumbnail {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     thumbnailImage = thumbnail.nsImage
                 }
             }

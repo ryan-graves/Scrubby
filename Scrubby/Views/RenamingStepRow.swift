@@ -6,11 +6,9 @@
 //
 
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct RenamingStepRow: View {
     @Binding var step: RenamingStep
-    @Binding var draggingStep: RenamingStep?
     let moveUpAction: () -> Void
     let moveDownAction: () -> Void
     let removeAction: () -> Void
@@ -23,13 +21,15 @@ struct RenamingStepRow: View {
                 if !isOnlyStep {
                     VStack {
                         Button(action: moveUpAction) {
-                            Image(systemName: "arrow.up")
+                            Label("Move Step Up", systemImage: "arrow.up")
+                                .labelStyle(.iconOnly)
                                 .foregroundStyle(isHovering ? Color.accentColor : Color.secondary)
                         }
                         .buttonStyle(.bordered)
                         .frame(width: 12)
                         Button(action: moveDownAction) {
-                            Image(systemName: "arrow.down")
+                            Label("Move Step Down", systemImage: "arrow.down")
+                                .labelStyle(.iconOnly)
                                 .foregroundStyle(isHovering ? Color.accentColor : Color.secondary)
                         }
                         .buttonStyle(.bordered)
@@ -60,25 +60,23 @@ struct RenamingStepRow: View {
                                     step.type = .findReplace(find: newValue, replace: replace, isRegex: isRegex)
                                 }
                             ))
-                            .onDrop(of: [UTType.text], isTargeted: nil) { _ in false }
                             .padding(6)
                             .background(Color(NSColor.quaternarySystemFill))
-                            .cornerRadius(6)
+                            .clipShape(.rect(cornerRadius: 6))
                             TextField(isRegex ? "Template" : "Replace", text: Binding(
                                 get: { replace },
                                 set: { newValue in
                                     step.type = .findReplace(find: find, replace: newValue, isRegex: isRegex)
                                 }
                             ))
-                            .onDrop(of: [UTType.text], isTargeted: nil) { _ in false }
                             .padding(6)
                             .background(Color(NSColor.quaternarySystemFill))
-                            .cornerRadius(6)
+                            .clipShape(.rect(cornerRadius: 6))
                         }
                         if isRegex {
                             Text("Use $0 for full match, $1, $2, etc. for capture groups")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 case .prefix(let value):
@@ -92,9 +90,8 @@ struct RenamingStepRow: View {
                         ))
                         .padding(6)
                         .background(Color(NSColor.quaternarySystemFill))
-                        .cornerRadius(6)
+                        .clipShape(.rect(cornerRadius: 6))
                     }
-                    .onDrop(of: [UTType.text], isTargeted: nil) { _ in false }
                 case .suffix(let value):
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Suffix").font(.headline)
@@ -106,9 +103,8 @@ struct RenamingStepRow: View {
                         ))
                         .padding(6)
                         .background(Color(NSColor.quaternarySystemFill))
-                        .cornerRadius(6)
+                        .clipShape(.rect(cornerRadius: 6))
                     }
-                    .onDrop(of: [UTType.text], isTargeted: nil) { _ in false }
                 case .replaceFilenameWith(let value):
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Rename").font(.headline)
@@ -120,51 +116,44 @@ struct RenamingStepRow: View {
                         ))
                         .padding(6)
                         .background(Color(NSColor.quaternarySystemFill))
-                        .cornerRadius(6)
+                        .clipShape(.rect(cornerRadius: 6))
                     }
-                    .onDrop(of: [UTType.text], isTargeted: nil) { _ in false }
                 case .fileFormat(_):
-                    HStack(alignment: .top, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text("Format").font(.headline)
-                        HStack {
-                            Picker("Format", selection: Binding(
-                                get: {
-                                    if case let .fileFormat(currentFormat) = step.type {
-                                        return currentFormat
-                                    }
-                                    return .none
-                                },
-                                set: { newValue in
-                                    step.type = .fileFormat(newValue)
+                        Picker("Format", selection: Binding(
+                            get: {
+                                if case let .fileFormat(currentFormat) = step.type {
+                                    return currentFormat
                                 }
-                            )) {
-                                ForEach(FileFormat.allCases, id: \.self) { format in
-                                    Text(format.displayName).tag(format)
-                                }
+                                return .none
+                            },
+                            set: { newValue in
+                                step.type = .fileFormat(newValue)
                             }
-                            .pickerStyle(.radioGroup)
-                            .labelsHidden()
-                            Spacer()
+                        )) {
+                            ForEach(FileFormat.allCases, id: \.self) { format in
+                                Text(format.displayName).tag(format)
+                            }
                         }
-                        .padding(6)
-                        .cornerRadius(6)
+                        .pickerStyle(.radioGroup)
+                        .labelsHidden()
                     }
-                    .onDrop(of: [UTType.text], isTargeted: nil) { _ in false }
                 case .sequentialNumbering(let start, let minDigits, let position):
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 10) {
                         Text("Sequential Numbering").font(.headline)
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Start Number")
+                                Text("Start")
+                                    .font(.subheadline)
                                 TextField(
-                                    "Start Number",
+                                    "Start",
                                     text: Binding(
                                         get: { String(start) },
                                         set: { newValue in
                                             if let intVal = Int(newValue), intVal >= 0 {
                                                 step.type = .sequentialNumbering(start: intVal, minDigits: minDigits, position: position)
-                                            }
-                                            else if newValue.isEmpty {
+                                            } else if newValue.isEmpty {
                                                 // Allow clearing, treat as 0
                                                 step.type = .sequentialNumbering(start: 0, minDigits: minDigits, position: position)
                                             }
@@ -173,13 +162,14 @@ struct RenamingStepRow: View {
                                 )
                                 .textFieldStyle(.plain)
                                 .padding(6)
-                                .background(Color(NSColor.quaternarySystemFill))
-                                .cornerRadius(6)
-                                .frame(minWidth: 70)
+                                .background(Color(nsColor: .quaternarySystemFill), in: .rect(cornerRadius: 6))
                                 .multilineTextAlignment(.trailing)
                             }
+                            .frame(maxWidth: .infinity)
+
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Min Digits")
+                                    .font(.subheadline)
                                 TextField(
                                     "Min Digits",
                                     text: Binding(
@@ -187,8 +177,7 @@ struct RenamingStepRow: View {
                                         set: { newValue in
                                             if let intVal = Int(newValue), intVal >= 0 {
                                                 step.type = .sequentialNumbering(start: start, minDigits: intVal, position: position)
-                                            }
-                                            else if newValue.isEmpty {
+                                            } else if newValue.isEmpty {
                                                 step.type = .sequentialNumbering(start: start, minDigits: 0, position: position)
                                             }
                                         }
@@ -196,32 +185,33 @@ struct RenamingStepRow: View {
                                 )
                                 .textFieldStyle(.plain)
                                 .padding(6)
-                                .background(Color(NSColor.quaternarySystemFill))
-                                .cornerRadius(6)
-                                .frame(minWidth: 70)
+                                .background(Color(nsColor: .quaternarySystemFill), in: .rect(cornerRadius: 6))
                                 .multilineTextAlignment(.trailing)
                             }
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Position")
-                                Picker(
-                                    "Position",
-                                    selection: Binding(
-                                        get: { position },
-                                        set: { newValue in
-                                            step.type = .sequentialNumbering(start: start, minDigits: minDigits, position: newValue)
-                                        }
-                                    )
-                                ) {
-                                    ForEach(SequentialNumberPosition.allCases, id: \.self) { pos in
-                                        Text(pos.displayName).tag(pos)
-                                    }
-                                }
-                                .pickerStyle(.segmented)
-                                .frame(minWidth: 140)
-                            }
+                            .frame(maxWidth: .infinity)
                         }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Position")
+                                .font(.subheadline)
+                            Picker(
+                                "Position",
+                                selection: Binding(
+                                    get: { position },
+                                    set: { newValue in
+                                        step.type = .sequentialNumbering(start: start, minDigits: minDigits, position: newValue)
+                                    }
+                                )
+                            ) {
+                                ForEach(SequentialNumberPosition.allCases, id: \.self) { pos in
+                                    Text(pos.displayName).tag(pos)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .onDrop(of: [UTType.text], isTargeted: nil) { _ in false }
                 }
                 Spacer(minLength: 0)
             }
@@ -229,13 +219,13 @@ struct RenamingStepRow: View {
             .padding(.vertical, 8)
             .padding(.leading, 8)
             .padding(.trailing, 8)
-            .background(.ultraThinMaterial)
-            .cornerRadius(6)
+            .background(Color(nsColor: .quaternarySystemFill), in: .rect(cornerRadius: 6))
             
             if isHovering {
                 Button(action: removeAction) {
-                    Image(systemName: "minus.circle.fill")
-                        .foregroundColor(.red)
+                    Label("Remove Step", systemImage: "minus.circle.fill")
+                        .labelStyle(.iconOnly)
+                        .foregroundStyle(.red)
                 }
                 .buttonStyle(.plain)
                 .padding(4)
@@ -254,14 +244,12 @@ struct RenamingStepRow: View {
         @State var suffixStep = RenamingStep(type: .suffix("_SUF"))
         @State var fileFormatStep = RenamingStep(type: .fileFormat(.camelCased))
         @State var sequentialNumberingStep = RenamingStep(type: .sequentialNumbering(start: 1, minDigits: 3, position: .prefix))
-        @State var draggingStep: RenamingStep? = nil
 
         var body: some View {
             VStack(alignment: .leading, spacing: 24) {
                 Text("Find & Replace Step").font(.title2)
                 RenamingStepRow(
                     step: $findReplaceStep,
-                    draggingStep: $draggingStep,
                     moveUpAction: {},
                     moveDownAction: {},
                     removeAction: {},
@@ -270,7 +258,6 @@ struct RenamingStepRow: View {
                 Text("Prefix Step").font(.title2)
                 RenamingStepRow(
                     step: $prefixStep,
-                    draggingStep: $draggingStep,
                     moveUpAction: {},
                     moveDownAction: {},
                     removeAction: {},
@@ -279,7 +266,6 @@ struct RenamingStepRow: View {
                 Text("Suffix Step").font(.title2)
                 RenamingStepRow(
                     step: $suffixStep,
-                    draggingStep: $draggingStep,
                     moveUpAction: {},
                     moveDownAction: {},
                     removeAction: {},
@@ -288,7 +274,6 @@ struct RenamingStepRow: View {
                 Text("File Format Step").font(.title2)
                 RenamingStepRow(
                     step: $fileFormatStep,
-                    draggingStep: $draggingStep,
                     moveUpAction: {},
                     moveDownAction: {},
                     removeAction: {},
@@ -297,7 +282,6 @@ struct RenamingStepRow: View {
                 Text("Sequential Numbering Step").font(.title2)
                 RenamingStepRow(
                     step: $sequentialNumberingStep,
-                    draggingStep: $draggingStep,
                     moveUpAction: {},
                     moveDownAction: {},
                     removeAction: {},
@@ -309,4 +293,24 @@ struct RenamingStepRow: View {
         }
     }
     return RenamingStepRowPreviews()
+}
+
+#Preview("Sequential Numbering - Inspector Width") {
+    struct SequentialNumberingPreview: View {
+        @State var step = RenamingStep(type: .sequentialNumbering(start: 1, minDigits: 3, position: .prefix))
+
+        var body: some View {
+            RenamingStepRow(
+                step: $step,
+                moveUpAction: {},
+                moveDownAction: {},
+                removeAction: {},
+                isOnlyStep: false
+            )
+            .padding()
+            .frame(width: 360)
+        }
+    }
+
+    return SequentialNumberingPreview()
 }

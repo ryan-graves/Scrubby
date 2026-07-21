@@ -7,7 +7,6 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
-import AppKit
 
 // MARK: - ContentView
 
@@ -92,7 +91,7 @@ struct ContentView: View {
                         .padding(.vertical, 4)
                     }
                     .listStyle(.inset)
-                    .cornerRadius(8)
+                    .clipShape(.rect(cornerRadius: 8))
                     
                     HStack {
                         Button("Clear selected files") {
@@ -205,9 +204,7 @@ struct ContentView: View {
                     }
                 }
                 .padding(12)
-                .background(.ultraThinMaterial)
-                .cornerRadius(6)
-                .formStyle(.grouped)
+                .background(Color(nsColor: .quaternarySystemFill), in: .rect(cornerRadius: 6))
                 
                 if !fileProcessingVM.selectedFiles.isEmpty {
                     HStack {
@@ -283,18 +280,16 @@ struct ContentView: View {
         .navigationTitle("FileScrubby")
         .toolbar {
             ToolbarItem(placement: .automatic) {
-                Button(action: { uiStateVM.toggleInspector() }) {
-                    Image(systemName: "list.bullet")
-                        .foregroundStyle(.secondary)
-                }
+                Button("Toggle Inspector", systemImage: "list.bullet", action: uiStateVM.toggleInspector)
+                    .labelStyle(.iconOnly)
+                    .foregroundStyle(.secondary)
             }
         }
-        .overlay(
+        .overlay(alignment: .bottom) {
             ToastView(message: uiStateVM.toastMessage, isError: uiStateVM.toastIsError, showToast: $uiStateVM.showToast)
                 .opacity(uiStateVM.showToast ? 1 : 0)
-                .animation(.easeInOut, value: uiStateVM.showToast),
-            alignment: .bottom
-        )
+                .animation(.easeInOut, value: uiStateVM.showToast)
+        }
         // Add Save Preset Dialog
         .sheet(isPresented: $uiStateVM.showSavePresetDialog) {
             VStack(spacing: 16) {
