@@ -19,7 +19,8 @@ struct ToastView: View {
             Button {
                 withAnimation { showToast = false }
             } label: {
-                Image(systemName: "xmark.circle")
+                Label("Dismiss Notification", systemImage: "xmark.circle")
+                    .labelStyle(.iconOnly)
             }
             .buttonStyle(.borderless)
             .focusEffectDisabled()
@@ -29,8 +30,8 @@ struct ToastView: View {
         .padding(.leading, 16)
         .padding(.trailing, 8)
         .background(isError ? Color.red : Color.green)
-        .foregroundColor(.white)
-        .cornerRadius(8)
+        .foregroundStyle(.white)
+        .clipShape(.rect(cornerRadius: 8))
         .padding(.top, 10)
         .padding(8)
     }

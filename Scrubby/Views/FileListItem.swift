@@ -27,7 +27,7 @@ struct FileListItem: View {
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: thumbnailSizePreference.size.width, height: thumbnailSizePreference.size.height)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
             VStack(alignment: .leading, spacing: 2) {
@@ -35,13 +35,13 @@ struct FileListItem: View {
                     .lineLimit(1)
                 Text("Selected file")
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             Spacer(minLength: 4)
             HStack(spacing: 16) {
                 Image(systemName: "arrow.right")
                 Text(processedFileName)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Spacer(minLength: 4)
             }
             HStack {
@@ -52,8 +52,9 @@ struct FileListItem: View {
                             selectedFiles.remove(at: index)
                         }
                     } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .foregroundColor(.red)
+                        Label("Remove File", systemImage: "minus.circle.fill")
+                            .labelStyle(.iconOnly)
+                            .foregroundStyle(.red)
                     }
                     .buttonStyle(.borderless)
                     .padding(4)
