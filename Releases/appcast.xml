@@ -3,6 +3,19 @@
     <channel>
         <title>FileScrubby</title>
         <item>
+            <title>1.4.1</title>
+            <pubDate>Tue, 21 Jul 2026 18:43:57 +0000</pubDate>
+            <sparkle:version>14</sparkle:version>
+            <sparkle:shortVersionString>1.4.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/FileScrubby-1.4.1.dmg" length="3568025" type="application/octet-stream" sparkle:edSignature="BAFNecm8VqvPCR75SQvIYF79RfwAlzlJSmt+4RrflOfT9WeDLRO4OUkXE/10jWEdpyDW2N+wPDFT8Y7+9gpKBA=="/>
+            <sparkle:deltas>
+                <enclosure url="https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/FileScrubby14-13.delta" sparkle:deltaFrom="13" length="333522" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="862528" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,en" sparkle:edSignature="2Z6RPRBmfb1As6BoJSUym0chEZQVrnzjGiaRgLTwf8Rm5ZgzDGR/5uPmMwCGqJ3mG8sxOYbm6DBj6uqLftRxDw=="/>
+                <enclosure url="https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/FileScrubby14-12.delta" sparkle:deltaFrom="12" length="357302" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="862528" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,en" sparkle:edSignature="ZirhhEJXMGoufQt9Ewh9+Bdhd8TOe7ti2HB/7plxPHk5YEPccc12hykQPA99pwpKFKic1Mn10oiagGLhAFSvDA=="/>
+                <enclosure url="https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/FileScrubby14-11.delta" sparkle:deltaFrom="11" length="223130" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="862496" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,en" sparkle:edSignature="PFr1o9SjyocE+qhe0IQJuVh56yIx/IeA1Ii4dxzwjHlgUDIC8hGtc7PbL+RbyQQdngoxIXcrjvDVu/SiV6Q1Cw=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.4</title>
             <pubDate>Wed, 11 Feb 2026 04:54:54 +0000</pubDate>
             <sparkle:version>13</sparkle:version>
@@ -24,14 +37,6 @@
             <sparkle:deltas>
                 <enclosure url="https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/FileScrubby12-11.delta" sparkle:deltaFrom="11" length="371394" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="862496" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,en" sparkle:edSignature="+tTtGIwCpTHzI6mvi0+fdg9HUwLDB8y11Gd/f/I6BcnRbRIuw9cngCjUIx2OewPNoqlcvSx1a3Dvrfbw2pH9Cw=="/>
             </sparkle:deltas>
-        </item>
-        <item>
-            <title>1.2</title>
-            <pubDate>Fri, 06 Feb 2026 02:15:29 -0600</pubDate>
-            <sparkle:version>11</sparkle:version>
-            <sparkle:shortVersionString>1.2</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://raw.githubusercontent.com/ryan-graves/Scrubby/refs/heads/main/Releases/FileScrubby-1.2.dmg" length="3538462" type="application/octet-stream" sparkle:edSignature="dWS0GXMF4FWzqSxWqTRui8PDWi72TZ/fma1XBS2Se4DWFy5NqkKBYLvi8Ttz+VfjqbV9ePQn0qu5o1eueLmbDw=="/>
         </item>
     </channel>
 </rss>
